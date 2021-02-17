@@ -1,5 +1,5 @@
 	.data
-my_string: .string ì92013î,0
+my_string: .string ‚Äú92013‚Äù,0
 	.text
  	.global lab_2_test
 	.global ptr_to_string
@@ -42,8 +42,8 @@ num_digits:
 NDLOOP:
 	UDIV r0, r0, #10 ; divide i by 10
 	ADD r2, r2, #1 ; add 1 to n
-	CMP r0, #0 ; branch if i == 0
-	BEQ NDLOOP
+	CMP r0, #0 ; branch if i != 0
+	BNE NDLOOP
 
  	LDM0FD r13!, {r14}
  	MOV pc, lr
