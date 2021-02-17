@@ -43,9 +43,16 @@ lab_2_test:
 num_digits:
 	STMFD r13!, {r14}
 
+
 	; Your code for the num_digits routine goes here.
 	MOV r2,#0
 
+DIVby10:
+	MOV r3,#10
+	UDIV r0,r0,r3
+	ADD r2,r2,#1
+	CMP r0,#0
+	BNE DIVby10
 
 	LDMFD r13!, {r14}
 	MOV pc, lr
