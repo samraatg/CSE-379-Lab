@@ -40,11 +40,12 @@ num_digits:
  	; Your code for the num_digits routine goes here.
  	MOV r2, 0 ; initialize number of digits (n) to zero
 NDLOOP:
-	UDIV r0, r0, #10 ; divide i by 10
+	MOV r3, #10
+	UDIV r0, r0, r3 ; divide i by 10
 	ADD r2, r2, #1 ; add 1 to n
-	CMP r0, #0 ; branch if i == 0
-	BEQ NDLOOP
-
+	CMP r0, #0 ; branch if i != 0
+	BNE NDLOOP
+				; else exit
  	LDM0FD r13!, {r14}
  	MOV pc, lr
 
@@ -55,13 +56,14 @@ str2int:
 
 	MOV r0, #1	; Initialize i to zero
 S2ILOOP:
-	; Load character from address pointed to by r1
-	CMP char, #0 ; Branch to S2IDONE if char = 0
+	LDRB r2, [r1] ; Load character from address pointed to by r1
+	CMP r2, #0 ; Branch to S2IDONE if char == 0
 	BEQ S2IDONE
-	MULT r0, r0, #10 ; multiply i by 10
-	SUB char, #0x30 ; subtract #0x30 from char to get digit value
-	ADD i, i, char ; add digit value to i
-	; add one to pointer
+	MOV r3, #10
+	MULT r0, r0, r3 ; multiply i by 10
+	SUB r2, #0x30 ; subtract 0x30 (ASCII 0) from char to get digit value
+	ADD r0, r0, r2 ; add digit value to i
+	ADD r1, r1, #1 ; add one to pointer
 	B S2ILOOP ; jump back to load char step
 S2IDONE:
 	LDMFD r13!, {r14}
