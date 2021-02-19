@@ -1,5 +1,5 @@
 	.data
-my_string: .string “92013”,0
+my_string: .string "983",0
 	.text
  	.global lab_2_test
 	.global ptr_to_string
@@ -13,6 +13,8 @@ lab_2_test:
 	; test num_digits and str2int.
 	; To test int2str, use the lines shown below to initialize
 	; the pointer to the string and call str2int.
+
+	LDR r1, ptr_to_string
 
 	BL str2int
 
@@ -28,7 +30,7 @@ lab_2_test:
  	; Initialize r1 with the pointer to my_string, then call
 	; int2str using the lines shown below.
 
- 	ldr r1, ptr_to_string
+ 	;LDR r1, ptr_to_string
 
  	BL int2str
  	LDMFD r13!, {r14}
@@ -38,15 +40,16 @@ lab_2_test:
 num_digits:
  	STMFD r13!, {r14}
  	; Your code for the num_digits routine goes here.
- 	MOV r2, 0 ; initialize number of digits (n) to zero
+ 	MOV r3, #0 ; initialize number of digits (n) to zero
 NDLOOP:
-	MOV r3, #10
-	UDIV r0, r0, r3 ; divide i by 10
-	ADD r2, r2, #1 ; add 1 to n
+	MOV r4, #10
+	UDIV r0, r0, r4 ; divide i by 10
+	ADD r3, r3, #1 ; add 1 to n
 	CMP r0, #0 ; branch if i != 0
 	BNE NDLOOP
 				; else exit
- 	LDM0FD r13!, {r14}
+	MOV r0, r3 ; return n in r0
+ 	LDMFD r13!, {r14}
  	MOV pc, lr
 
 
@@ -54,18 +57,19 @@ str2int:
  	STMFD r13!, {r14}
 	; Your code for the str2int routine goes here.
 
-	MOV r0, #1	; Initialize i to zero
+	MOV r3, #0	; Initialize i to zero (i is in r3 for now, returned in r0 later)
 S2ILOOP:
-	LDRB r2, [r1] ; Load character from address pointed to by r1
-	CMP r2, #0 ; Branch to S2IDONE if char == 0
+	LDRB r4, [r1] ; Load character from address pointed to by r1
+	CMP r4, #0 ; Branch to S2IDONE if char == 0
 	BEQ S2IDONE
-	MOV r3, #10
-	MULT r0, r0, r3 ; multiply i by 10
-	SUB r2, #0x30 ; subtract 0x30 (ASCII 0) from char to get digit value
-	ADD r0, r0, r2 ; add digit value to i
+	MOV r5, #10
+	MULT r3, r3, r5 ; multiply i by 10
+	SUB r4, r4, #0x30 ; subtract 0x30 (ASCII 0) from char to get digit value
+	ADD r3, r3, r4 ; add digit value to i
 	ADD r1, r1, #1 ; add one to pointer
 	B S2ILOOP ; jump back to load char step
 S2IDONE:
+	MOV r0, r3 ; return i in r0
 	LDMFD r13!, {r14}
 	MOV pc, lr
 
