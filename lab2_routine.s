@@ -76,11 +76,27 @@ int2str:
 
 	; Your code for the int2str routine goes here.
 	ADD r1,r1,r2
-	STR NULL,r1
+	MOV r8,#0
+	STRB r8,[r1]
 	SUB r1,r1,#1
 
+DivideByTen:
+	MOV r3,#10
+	UDIV r4,r0,r3		;r4 = q
+	MUL r5,r4,r3		;r5= p
+	SUB r6,r0,r5		;r6 = dig
+	ADD r7,r6,#0x30		;r7=ascii
+	STRB r7,[r1]
+	MOV r0,r4
+	CMP r0,#0
+	BEQ STOP
+	SUB r1,r1,#1
+	B DivideByTen
+	
+STOP:
 
 	LDMFD r13!, {r14}
 	MOV pc, lr
 
 	.end
+
