@@ -1,5 +1,5 @@
 	.data
-my_string: .string "983",0
+my_string: .string "929042",0
 	.text
  	.global lab_2_test
 	.global ptr_to_string
@@ -23,6 +23,8 @@ lab_2_test:
  	; using the call shown below to ensure it returns the
  	; correct number of digits.
 
+	MOV r9, r0 ; save returned int from str2int for testing int2str
+
 	BL num_digits
 
  	; Initialize r0 with the integer used to test num_digits
@@ -30,7 +32,9 @@ lab_2_test:
  	; Initialize r1 with the pointer to my_string, then call
 	; int2str using the lines shown below.
 
- 	;LDR r1, ptr_to_string
+	MOV r2, r0 ; initializations for int2str
+	MOV r0, r9
+ 	LDR r1, ptr_to_string
 
  	BL int2str
  	LDMFD r13!, {r14}
@@ -77,6 +81,23 @@ S2IDONE:
 int2str:
 	STMFD r13!, {r14}
 	; Your code for the int2str routine goes here.
+	ADD r1,r1,r2
+	MOV r8,#0
+	STRB r8,[r1]
+	SUB r1,r1,#1
+DivideByTen:
+	MOV r3,#10
+	UDIV r4,r0,r3		;r4 = q
+	MUL r5,r4,r3		;r5= p
+	SUB r6,r0,r5		;r6 = dig
+	ADD r7,r6,#0x30		;r7=ascii
+	STRB r7,[r1]
+	MOV r0,r4
+	CMP r0,#0
+	BEQ STOP
+	SUB r1,r1,#1
+	B DivideByTen
+STOP:
 	LDMFD r13!, {r14}
 	MOV pc, lr
 
