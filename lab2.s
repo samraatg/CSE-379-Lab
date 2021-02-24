@@ -33,7 +33,7 @@ lab_2_test:
 	; int2str using the lines shown below.
 
 	MOV r2, r0 ; initializations for int2str
-	MOV r0, r9
+	MOV r0, r9 ; Initaialize r0 with integer used to test num_digits
  	LDR r1, ptr_to_string
 
  	BL int2str
@@ -81,21 +81,21 @@ S2IDONE:
 int2str:
 	STMFD r13!, {r14}
 	; Your code for the int2str routine goes here.
-	ADD r1,r1,r2
-	MOV r8,#0
-	STRB r8,[r1]
-	SUB r1,r1,#1
+	ADD r1,r1,r2    ;Add num of digits to pinter r1=r1+r2
+	MOV r8,#0 		;Store 0 at r8 to be used as NULL
+	STRB r8,[r1]	;Store Null at adress pointed to by pointer
+	SUB r1,r1,#1	; Subtract 1 from pointer r1= r1-1
 DivideByTen:
-	MOV r3,#10
-	UDIV r4,r0,r3		;r4 = q
-	MUL r5,r4,r3		;r5= p
-	SUB r6,r0,r5		;r6 = dig
-	ADD r7,r6,#0x30		;r7=ascii
-	STRB r7,[r1]
-	MOV r0,r4
-	CMP r0,#0
-	BEQ STOP
-	SUB r1,r1,#1
+	MOV r3,#10		; Move 10 to r3 to be used for division and multiplication
+	UDIV r4,r0,r3		;r4 = q  Divide r0 by 10 
+	MUL r5,r4,r3		;r5= p	 Multiply r4 by 10
+	SUB r6,r0,r5		;r6 = dig Subtract r5 from r0 
+	ADD r7,r6,#0x30		;r7=ascii	add 0x30 to r7
+	STRB r7,[r1]		; store value of r7 at adress pointed to by pointer r1
+	MOV r0,r4			;Move value of r4 into r0
+	CMP r0,#0			; Compare value of r0 to 0
+	BEQ STOP			; We Branch if r0=0
+	SUB r1,r1,#1		; If r0!=0 then we subtarct 1 from r1 and branch
 	B DivideByTen
 STOP:
 	LDMFD r13!, {r14}
