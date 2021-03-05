@@ -99,14 +99,12 @@ StringLoop:
 	BL output_character ; Display character 
 	ADD r1,r1,#1		; Advance pointer
 	B StringLoop		; Move to next character in the string
-	
-	
+		
 		; Your code for your output_string routine is placed here
 StringEnd:
 
  	LDMFD sp!, {lr}
 	mov pc, lr
-
 
 read_character:
 	STMFD SP!,{lr}	; Store register lr on stack
