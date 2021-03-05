@@ -65,19 +65,41 @@ lab3:
 
 read_string:
 	STMFD SP!,{lr}	; Store register lr on stack
-
+	
 		; Your code for your read_string routine is placed here
+	
+read_string_loop:
+	BL read_character
+	CMP r0,#0x0A
+	BEQ EndOfNumber ;:PlaceHolder Number
+	STRB r0,[r6]   ;store character at the pointer to placeholder string
+	ADD r6,r6,#1   ;Advance the pointer
+	B read_string_loop
+	
+EndOfNumber:
 
  	LDMFD sp!, {lr}
 	mov pc, lr
 
 output_string:
 	STMFD SP!,{lr}	; Store register lr on stack
-
+	
+	;load prompt string to register r3
+StringLoop:	
+	LDR r0,[r1]   ; change r1 to the pointer to the prompt to be displayed
+	CMP r0,#0    
+	BEQ StringEnd ; End if we reach a null character
+	BL output_character ; Display character 
+	ADD r1,r1,#1		; Advance pointer
+	B StringLoop		; Move to next character in the string
+	
+	
 		; Your code for your output_string routine is placed here
+StringEnd:
 
  	LDMFD sp!, {lr}
 	mov pc, lr
+
 
 read_character:
 	STMFD SP!,{lr}	; Store register lr on stack
