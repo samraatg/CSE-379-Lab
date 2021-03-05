@@ -36,20 +36,18 @@ lab3:
    		 ; Lab #3.  This should call your other routines such as
    		 ; uart_init, read_string, and output_string.
 		; r0 = results string
-		MOV r1, r4
-		BL str2int ;
-		MOV r1, r5
-		MOV r4, r0
-		BL num_digits
-		MOV r2, r0
-		MOV r0, r4
-		BL int2str
-		MOV r0, r0
-		;read_string prompt1
-		;output_string prompt1
-		;read_string first number
-		;store first number to r8
 
+		MOV r6, r3
+		BL output_string ;output_string prompt1
+		MOV r6, r5 ; move string1 to r6
+		BL read_string ;read_string first number
+
+		LDR r3, ptr_to_prompt2
+		MOV r6, r3
+		BL output_string
+
+		LDR r6, ptr_to_num_2_string
+		BL read_string
 		;read_string prompt2
 		;output_string prompt2
 		;read_string second number
@@ -72,37 +70,29 @@ lab3:
 
 read_string:
 	STMFD SP!,{lr}	; Store register lr on stack
-	
-		; Your code for your read_string routine is placed here
-	
-read_string_loop:
+	; Your code for your read_string routine is placed here
+RS_LOOP:
 	BL read_character
-	CMP r0,#0x0A
-	BEQ EndOfNumber ;:PlaceHolder Number
+	CMP r0,#0xD ; check for enter character
+	BEQ RS_STR_END ;:PlaceHolder Number
 	STRB r0,[r6]   ;store character at the pointer to placeholder string
 	ADD r6,r6,#1   ;Advance the pointer
-	B read_string_loop
-	
-EndOfNumber:
-
+	B RS_LOOP
+RS_STR_END:
  	LDMFD sp!, {lr}
 	mov pc, lr
 
 output_string:
 	STMFD SP!,{lr}	; Store register lr on stack
-	
-	;load prompt string to register r3
-StringLoop:	
-	LDR r0,[r1]   ; change r1 to the pointer to the prompt to be displayed
-	CMP r0,#0    
-	BEQ StringEnd ; End if we reach a null character
-	BL output_character ; Display character 
-	ADD r1,r1,#1		; Advance pointer
-	B StringLoop		; Move to next character in the string
-		
-		; Your code for your output_string routine is placed here
-StringEnd:
-
+	; Your code for your output_string routine is placed here
+OS_LOOP:
+	LDRB r0,[r6]   ; change r6 to the pointer to the prompt to be displayed
+	CMP r0,#0x0    ; check for null
+	BEQ OS_STR_END ; End if we reach a null character
+	BL output_character ; Display character
+	ADD r6,r6,#1		; Advance pointer
+	B OS_LOOP		; Move to next character in the string
+OS_STR_END:
  	LDMFD sp!, {lr}
 	mov pc, lr
 
