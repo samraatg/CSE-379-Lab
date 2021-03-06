@@ -9,10 +9,12 @@
 prompt1:	.string "Enter a number: ",0
 prompt2:	.string "Enter another number: ",0
 prompt3:	.string "Enter an operation (+ or -) : ",0
-results:	.string "Place holder for results",0
+results:	.string "Place holder string for your results",0
 num_1_string: .string "Place holder string for your first number",0
 num_2_string: .string "Place holder string for your second number",0
-prompt_end: .string "Do you want to enter another operation? (Y/N): ",0
+prompt_end: .string "Do you want to enter another operation? If so, enter Y: ",0
+error1: .string "Error: Number out of bounds, please enter numbers in range 0-99999",0
+error2: .string "Error: Invalid operation",0
 .text
 	.global lab3
 U0FR:  .equ 0x18			; UART0 Flag Register
@@ -23,119 +25,182 @@ ptr_to_results:	.word results
 ptr_to_num_1_string: .word num_1_string
 ptr_to_num_2_string: .word num_2_string
 ptr_to_prompt_end: .word prompt_end
+ptr_to_error1: .word error1
+ptr_to_error2: .word error2
 
 
 lab3:
 	STMFD SP!,{lr}	; Store register lr on stack
-	LDR r3, ptr_to_prompt1 ; r3 will be used for prompt ptrs
-	LDR r4, ptr_to_results ; r4 for result
-   	LDR r5, ptr_to_num_1_string ; r5 for numbers and operation
-
-   		 ; Your code is placed here.  This is your main routine for
-   		 ; Lab #3.  This should call your other routines such as
-   		 ; uart_init, read_string, and output_string.
+   		; Your code is placed here.  This is your main routine for
+   		; Lab #3.  This should call your other routines such as
+   		; uart_init, read_string, and output_string.
 		; r0 = results string
+START:
+		; 1st prompt and number
+		LDR r3, ptr_to_prompt1
+		BL output_string 			; output prompt1
+		LDR r3, ptr_to_num_1_string
+		BL read_string 				; read number1
+		LDR r3, ptr_to_num_1_string
+		BL output_string 			; output entered number1
+		MOV r0, #0xA 				; ASCII newline
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD 				; ASCII CR(enter), formats newline to front
+		BL output_character 		; fix newline to front
 
-		MOV r6, r3 ; move ptr_to_prompt1 to r6
-		BL output_string ;output_string prompt1
-		MOV r6, r5 ; move string1 to r6
-		BL read_string ;read_string number1
-		MOV r6, r5
-		BL output_string ; output entered number1
+		; 2nd prompt and number
+		LDR r3, ptr_to_prompt2
+		BL output_string 			; output prompt2
+		LDR r3, ptr_to_num_2_string
+		BL read_string 				; read number2
+		LDR r3, ptr_to_num_2_string
+		BL output_string 			; output entered number2
+		MOV r0, #0xA
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD
+		BL output_character 		; fix newline to front
 
-		; tried making the prompts showup on each newline
-		;MOV r0, #0xA ; ASCII newline
-		;BL output_character ; output newline for formatting
-
-		LDR r3, ptr_to_prompt2 ; load prompt2 and number2
-		LDR r5, ptr_to_num_2_string
-
-		MOV r6, r3 ; output_string prompt2
-		BL output_string
-		MOV r6, r5 ; read_string number2
-		BL read_string
-		MOV r6, r5 ; output entered number2
-		BL output_string
-
+		; converting number strings to integers
 		LDR r1, ptr_to_num_1_string
 		BL str2int
-		MOV r2, r0 ; r2 holds number1 as int
-
+		MOV r7, r0 					; r7 = number1 as int
 		LDR r1, ptr_to_num_2_string
 		BL str2int
-		MOV r7, r0 ; r7 holds number2 as int
+		MOV r8, r0 					; r8 = number2 as int
 
+		; 3rd prompt and operation
+		LDR r3, ptr_to_prompt3
+		BL output_string			; output prompt3
+		BL read_character			; read operation char
+		MOV r9, r0					; r9 = entered operation char
+		BL output_character			; output entered operation
+		MOV r0, #0xA
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD
+		BL output_character 		; fix newline to front
 
-		;read_string prompt3
-		;output_string prompt3
-		;read_character operation
+		; checks for number errors
+		MOV r0, r7
+		BL num_digits
+		CMP r0, #6					; check if num1 length > 5 digits
+		BGE ERROR1					; if |num1|>99999, throw error and reprompt
+		MOV r0, r8
+		BL num_digits
+		CMP r0, #6					; check if num2 length > 5 digits
+		BGE ERROR1					; if |num2|>99999, throw error and reprompt
 
-		;if operation == "+", do addition
-		;else operation == "-", do subtraction
-		;int2str result
+		; checks for valid operation
+		CMP r9, #0x2B
+		BEQ DO_ADD
+		CMP r9, #0x2D
+		BEQ DO_SUB
+		B ERROR2
+DO_ADD:
+		ADD r10,r7,r8				; r10 = num1 + num2
+		B RESULT
+DO_SUB:
+		SUB r10,r7,r8				; r10 = num1 - num2
+		B RESULT
 
-		;
+RESULT:
+		; int2str num1
+		; int2str num2
+		; write num1, r9, num2, '=', r10 to results str
+		B EXIT
+ERROR1:
+		LDR r3, ptr_to_error1
+		BL output_string			; output error1, number out of bounds
+		MOV r0, #0xA
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD
+		BL output_character 		; fix newline to front
+		B EXIT
+ERROR2:
+		LDR r3, ptr_to_error2
+		BL output_string			; output error2, invalid operation
+		MOV r0, #0xA
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD
+		BL output_character 		; fix newline to front
+		B EXIT
+EXIT:
+		LDR r3, ptr_to_prompt_end
+		BL output_string 			; output end prompt
+		BL read_character			; read an entered char
+		BL output_character 		; output entered char
+		MOV r3, r0					; mov char to r3
+		MOV r0, #0xA
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD
+		BL output_character 		; fix newline to front
+		CMP r3,#0x59 				; check if Y was entered
+		BEQ	START					; if so, rerun routine
  	LDMFD sp!, {lr}
 	mov pc, lr
 
+; input: str from PuTTy terminal
+; output: str stored in memory
+; uses r0 for char, r3 for ptr
 read_string:
-	STMFD SP!,{lr}	; Store register lr on stack
-	; Your code for your read_string routine is placed here
+	STMFD SP!,{lr}
 RS_LOOP:
-	BL read_character
-	CMP r0,#0xD ; check for enter character
-	BEQ RS_STR_END ;:PlaceHolder Number
-	STRB r0,[r6]   ;store character at the pointer to placeholder string
-	ADD r6,r6,#1   ;Advance the pointer
-	B RS_LOOP
+		BL read_character
+		CMP r0,#0xD 		; check for enter char
+		BEQ RS_STR_END 		; exit if char='enter'
+		STRB r0,[r3]   		; store char in str
+		ADD r3,r3,#1   		; increment ptr
+		B RS_LOOP
 RS_STR_END:
-	MOV r0, #0x0
-	STRB r0, [r6] ; store null at end of string
+		MOV r0, #0x0
+		STRB r0, [r3] 		; store null at end of str
  	LDMFD sp!, {lr}
 	mov pc, lr
 
+; input: ptr to a str in r3
+; output: str in PuTTy terminal
+; uses r0 for char, r3 for ptr
 output_string:
-	STMFD SP!,{lr}	; Store register lr on stack
-	; Your code for your output_string routine is placed here
+	STMFD SP!,{lr}
 OS_LOOP:
-	LDRB r0,[r6]   ; change r6 to the pointer to the prompt to be displayed
-	CMP r0,#0x0    ; check for null
-	BEQ OS_STR_END ; End if we reach a null character
-	BL output_character ; Display character
-	ADD r6,r6,#1		; Advance pointer
-	B OS_LOOP		; Move to next character in the string
+		LDRB r0,[r3]   		; load char
+		CMP r0,#0x0    		; check if char=NULL
+		BEQ OS_STR_END 		; if so, exit
+		BL output_character ; display char
+		ADD r3,r3,#1		; increment ptr
+		B OS_LOOP
 OS_STR_END:
  	LDMFD sp!, {lr}
 	mov pc, lr
 
+; input: char from PuTTy terminal
+; output: char in r0
+; uses r0-r2
 read_character:
-	STMFD SP!,{lr}	; Store register lr on stack
-		; Your code for your read_character routine is placed here
-		MOV r1, #0xC000
-		MOVT r1, #0x4000 ; r1 = base address of UART
+	STMFD SP!,{lr}
+		MOV r1,#0xC000
+		MOVT r1,#0x4000 	; r1 = base address of UART
 TEST_RFE:
-		LDRB r2, [r1, #U0FR] ; load 0x4000C018 (U0FR) into r2
-		AND r2, r2, #0x10 ; mask all bits except RxFE (bit 4)
-
-		CMP r2, #0x10	; Test RxFE in Status register
-		BEQ TEST_RFE ; if RxFE == 1, test again
-		LDRB r0, [r1] ; else RxFE == 0, read byte (r0) from receive register (r1)
+		LDRB r2,[r1, #U0FR] ; load 0x4000C018 (U0FR) into r2
+		AND r2,r2,#0x10 	; mask all bits except RxFE (bit 4)
+		CMP r2,#0x10		; test RxFE in status register
+		BEQ TEST_RFE 		; if RxFE == 1, test again
+		LDRB r0,[r1] 		; else RxFE == 0, read byte (r0) from receive register (r1)
  	LDMFD sp!, {lr}
 	mov pc, lr
 
+; input: char to output in r0
+; output: char in PuTTy terminal
+; uses r0-r2
 output_character:
-	STMFD SP!,{lr}	; Store register lr on stack
-		; Your code for your output_character routine is placed here
-		MOV r1, #0xC000
-		MOVT r1, #0x4000 ; r1 = base address of UART
+	STMFD SP!,{lr}
+		MOV r1,#0xC000
+		MOVT r1,#0x4000 	; r1= base address of UART
 TEST_TFF:
-		LDRB r2, [r1, #U0FR] ; load 0x4000C018 (U0FR) into r2
-		AND r2, r2, #0x20 ; mask all bits except TxFF (bit 5)
-
-		CMP r2, #0x20	; Test TxFF in Status register
-		BEQ TEST_TFF ; if TxFF == 1, test again
-		STRB r0, [r1] ; else TxFF == 0, store byte (r0) in transmit register (r1)
-
+		LDRB r2,[r1, #U0FR] ; load 0x4000C018 (U0FR) into r2
+		AND r2,r2,#0x20 	; mask all bits except TxFF (bit 5)
+		CMP r2,#0x20		; test TxFF in status register
+		BEQ TEST_TFF 		; if TxFF == 1, test again
+		STRB r0,[r1] 		; else TxFF == 0, store byte (r0) in transmit register (r1)
  	LDMFD sp!, {lr}
 	mov pc, lr
 
@@ -147,93 +212,92 @@ uart_init:
  	LDMFD sp!, {lr}
 	mov pc, lr
 
-; Lab 2 subroutines, int2str, num_digits, and str2int
+; Lab 2 subroutines int2str, num_digits, and str2int
 ; are needed for performing the operation on the strings
 
 ; input: integer in r0
 ; output: length of integer in r0
+; uses r0-r3
 num_digits:
  	STMFD r13!, {r14}
- 		CMP r0, #0 ; check if r0 is negative
+ 		CMP r0, #0 		; r0=i, check if i is negative
  		BGE ND_START
- 		MOV r9, #-1
- 		MUL r0, r9 ; if so, make positive
+ 		MOV r1, #-1
+ 		MUL r0, r1 		; if so, make positive
 ND_START:
- 		MOV r7, #0 ; initialize number of digits (n) to zero
+ 		MOV r2, #0 		; r2=n, initialize n=0
 ND_LOOP:
-		MOV r8, #10
-		UDIV r0, r0, r8 ; divide i by 10
-		ADD r7, r7, #1 ; add 1 to n
-		CMP r0, #0 ; branch if i != 0
+		MOV r3, #10
+		UDIV r0, r0, r3 ; i=i/10
+		ADD r2, r2, #1 	; n=n+1
+		CMP r0, #0 		; exit if i=0
 		BNE ND_LOOP
-		; else exit
-		MOV r0, r7 ; return n in r0
+		MOV r0, r2 		; return n in r0
  	LDMFD r13!, {r14}
  	MOV pc, lr
 
 ; input: string starting at r1
 ; output: integer in r0
+; uses r0-r4
 str2int:
  	STMFD r13!, {r14}
-	; Your code for the str2int routine goes here.
-		MOV r7, #0	; initialize i to zero (i is in r7 for now, returned in r0 later)
-		LDRB r8, [r1] ; load first character to see if negative integer
-		MOV r9, #1
-		CMP r8, #0x2D ; compare character with ASCII '-'
+		MOV r0, #0		; r0=i, initialize i=0
+		LDRB r2, [r1] 	; load 1st char to see if int is negative
+		MOV r3, #1
+		CMP r2, #0x2D 	; compare 1st char with ASCII'-'
 		BNE S2I_LOOP
-		ADD r1, r1, #1 ; if first char is '-', move pointer to second char
-		MOV r9, #-1 ; r9 = -1 for multiplying later
+		ADD r3, #-1 	; if first char is '-', r3=-1
+		ADD r1, r1, #1	; move ptr to 2nd char (start of int)
 S2I_LOOP:
-		LDRB r8, [r1] ; load character from address pointed to by r1
-		CMP r8, #0 ; branch to S2IDONE if char == 0
+		LDRB r2, [r1] 	; r2=char, load char from str ptr
+		CMP r2, #0x0 	; if char=NULL, exit
 		BEQ S2I_DONE
-		MOV r10, #10
-		MULT r7, r7, r10 ; multiply i by 10
-		SUB r8, r8, #0x30 ; subtract 0x30 (ASCII 0) from char to get digit value
-		ADD r7, r7, r8 ; add digit value to i
-		ADD r1, r1, #1 ; add one to pointer
-		B S2I_LOOP ; jump back to load char step
+		MOV r4, #10
+		MULT r0,r0,r4 	; r0=i, i=i*10
+		SUB r2,r2,#0x30 ; r2=dig, dig=ASCII'dig'-ASCII'0'
+		ADD r0,r0,r2 	; i=i+dig
+		ADD r1,r1,#1 	; increment ptr
+		B S2I_LOOP
 S2I_DONE:
-		MULT r7, r9
-		MOV r0, r7 ; return i in r0
+		MULT r0, r3 	; restore int sign if negative
 	LDMFD r13!, {r14}
 	MOV pc, lr
 
 ; input: integer in r0, integer length in r2
 ; output: string of the integer starting at r1
+; uses r0-r6
 int2str:
 	STMFD r13!, {r14}
-	; Your code for the int2str routine goes here.
-		ADD r1,r1,r2    ;Add num of digits to pointer r1=r1+r2
-		MOV r2, #0 ; placeholder for negative check
-		CMP r0, #0 ; check to see if integer is negative
+		ADD r1,r1,r2	; add num of digits to str ptr, r1=r1+r2
+		MOV r2,#0		; r2 is placeholder for '-' character
+		CMP r0,#0		; check to see if int is negative
 		BGE I2S_START
-		ADD r1, r1, #1 ;add another "digit" to account for '-'
-		MOV r2, #-1
-		MULT r0, r0, r2 ; make integer positive
-		MOV r2, #0x2D ;store ASCII '-' to add to string later
+		ADD r1,r1,#1 	; add another "digit" to account for '-'
+		MOV r2,#-1
+		MULT r0,r0,r2 	; make int positive
+		MOV r2,#0x2D 	; store ASCII'-' in r2 to add to str later
 I2S_START:
-		;ADD r1,r1,r2    ;Add num of digits to pointer r1=r1+r2
-		MOV r7,#0 		;Store 0 at r7 to be used as NULL
-		STRB r7,[r1]	;Store Null at adress pointed to by pointer
-		SUB r1,r1,#1	; Subtract 1 from pointer r1= r1-1
-DivideByTen:
-		MOV r8,#10		; Move 10 to r8 to be used for division and multiplication
-		UDIV r9,r0,r8		;r9 = q  Divide r0 by 10
-		MUL r10,r9,r8		;r10 = p	 Multiply r9 by 10
-		SUB r10,r0,r10		;r10 = dig Subtract p from r0
-		ADD r10,r10,#0x30		;r7=ascii	add 0x30 to r10
-		STRB r10,[r1]		; store value of r10 at adress pointed to by pointer r1
-		MOV r0,r9			;Move value of r9 into r0
-		CMP r0,#0			; Compare value of r0 to 0
-		BEQ I2S_STOP		; We Branch if r0=0
-		SUB r1,r1,#1		; If r0!=0 then we subtract 1 from r1 and branch
-		B DivideByTen
+		ADD r1,r1,r2    ; add num of digits to str ptr r1=r1+r2
+		MOV r3,#0x0
+		STRB r3,[r1]	; store NULL at the end of the str
+		SUB r1,r1,#1	; increment to next char in str
+I2S_LOOP:
+		MOV r4,#10
+		UDIV r5,r0,r4	; r5=q, q=i/10
+		MUL r6,r5,r4	; r6=p, p=q*10
+		SUB r6,r0,r6	; r6=dig, dig=i-p
+		ADD r6,r6,#0x30	; r6=ascii, ascii=dig+ASCII'0'
+		STRB r6,[r1]	; store ascii digit in str
+		MOV r0,r5		; r0=i=q, remove LSD from int
+		CMP r0,#0		;
+		BEQ I2S_STOP	; if i=0, exit
+		SUB r1,r1,#1	; else i!=0, increment to next char in str
+		B I2S_LOOP
 I2S_STOP:
-		CMP r2, #0x2D ;check to see if '-' still needs to be in string
+		CMP r2,#0x2D 	; check to see if '-' still needs to be in str
 		BNE I2S_DONE
-		SUB r1, r1, #1 ; go to front of string
-		STRB r2, [r1] ;store '-' at front of string
+		SUB r1,r1,#1 	; go to front of string
+		STRB r2,[r1] 	; store '-' at front of string
 I2S_DONE:
 	LDMFD r13!, {r14}
 	MOV pc, lr
