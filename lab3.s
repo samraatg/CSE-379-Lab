@@ -207,6 +207,68 @@ TEST_TFF:
 uart_init:
 	STMFD SP!,{lr}	; Store register lr on stack
 
+	MOV r0,#1
+	MOV r1,#0xE618
+	MOVT r1,#0x400F
+	str r0,[r1]
+
+	MOV r0,#1
+	MOV r1,#0xE608
+	MOVT r1,#0x400F
+	str r0,[r1] 
+
+	MOV r0,#0
+	MOV r1,#0xC030
+	MOVT r1,#0x4000
+	str r0,[r1] 
+
+	MOV r0,#8
+	MOV r1,#0xC024
+	MOVT r1,#0x4000
+	str r0,[r1] 
+
+	MOV r0,#44
+	MOV r1,#0xC028
+	MOVT r1,#0x4000
+	str r0,[r1] 
+
+	MOV r0,#0
+	MOV r1,#0xCFC8
+	MOVT r1,#0x4000
+	str r0,[r1] 
+
+	MOV r0,#0x60
+	MOV r1,#0xC02C
+	MOVT r1,#0x4000
+	str r0,[r1] 
+
+	MOV r0,#0x301
+	MOV r1,#0xC030
+	MOVT r1,#0x4000
+	str r0,[r1] 
+
+	MOV r0,#0x03
+	MOV r1,#0x451C
+	MOVT r1,#0x4000
+	ldr r2,[r1]
+	ORR r2,r2,r0
+	str r2,[r1]
+
+	MOV r0,#0x03
+	MOV r1,#0x4420
+	MOVT r1,#0x4000
+	ldr r2,[r1]
+	ORR r2,r2,r0
+	str r2,[r1]
+
+	MOV r0,#0x11
+	MOV r1,#0x452C
+	MOVT r1,#0x4000
+	ldr r2,[r1]
+	ORR r2,r2,r0
+	str r2,[r1]
+
+
 ; Your code for your uart_init routine is placed here
 
  	LDMFD sp!, {lr}
