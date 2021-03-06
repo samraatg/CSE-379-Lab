@@ -9,7 +9,7 @@
 prompt1:	.string "Enter a number: ",0
 prompt2:	.string "Enter another number: ",0
 prompt3:	.string "Enter an operation (+ or -) : ",0
-results:	.string "-999999",0
+results:	.string "Place holder for results",0
 num_1_string: .string "Place holder string for your first number",0
 num_2_string: .string "Place holder string for your second number",0
 prompt_end: .string "Do you want to enter another operation? (Y/N): ",0
@@ -27,34 +27,44 @@ ptr_to_prompt_end: .word prompt_end
 
 lab3:
 	STMFD SP!,{lr}	; Store register lr on stack
-	LDR r3, ptr_to_prompt1
-	LDR r4, ptr_to_results
-   	LDR r5, ptr_to_num_1_string
- 	LDR r6, ptr_to_num_2_string
+	LDR r3, ptr_to_prompt1 ; r3 will be used for prompt ptrs
+	LDR r4, ptr_to_results ; r4 for result
+   	LDR r5, ptr_to_num_1_string ; r5 for numbers and operation
 
    		 ; Your code is placed here.  This is your main routine for
    		 ; Lab #3.  This should call your other routines such as
    		 ; uart_init, read_string, and output_string.
 		; r0 = results string
 
-		MOV r6, r3
+		MOV r6, r3 ; move ptr_to_prompt1 to r6
 		BL output_string ;output_string prompt1
 		MOV r6, r5 ; move string1 to r6
-		BL read_string ;read_string first number
+		BL read_string ;read_string number1
+		MOV r6, r5
+		BL output_string ; output entered number1
 
-		LDR r3, ptr_to_prompt2
-		MOV r6, r3
+		; tried making the prompts showup on each newline
+		;MOV r0, #0xA ; ASCII newline
+		;BL output_character ; output newline for formatting
+
+		LDR r3, ptr_to_prompt2 ; load prompt2 and number2
+		LDR r5, ptr_to_num_2_string
+
+		MOV r6, r3 ; output_string prompt2
+		BL output_string
+		MOV r6, r5 ; read_string number2
+		BL read_string
+		MOV r6, r5 ; output entered number2
 		BL output_string
 
-		LDR r6, ptr_to_num_2_string
-		BL read_string
-		;read_string prompt2
-		;output_string prompt2
-		;read_string second number
-		;store second number to r9
+		LDR r1, ptr_to_num_1_string
+		BL str2int
+		MOV r2, r0 ; r2 holds number1 as int
 
-		;str2int first number
-		;str2int second number
+		LDR r1, ptr_to_num_2_string
+		BL str2int
+		MOV r7, r0 ; r7 holds number2 as int
+
 
 		;read_string prompt3
 		;output_string prompt3
@@ -79,6 +89,8 @@ RS_LOOP:
 	ADD r6,r6,#1   ;Advance the pointer
 	B RS_LOOP
 RS_STR_END:
+	MOV r0, #0x0
+	STRB r0, [r6] ; store null at end of string
  	LDMFD sp!, {lr}
 	mov pc, lr
 
