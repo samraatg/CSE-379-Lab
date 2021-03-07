@@ -38,28 +38,22 @@ lab3:
 		; r0 = results string
 START:
 		; 1st prompt and number
-		LDR r3, ptr_to_prompt1
+		LDR r0, ptr_to_prompt1
 		BL output_string 			; output prompt1
-		LDR r3, ptr_to_num_1_string
+		LDR r0, ptr_to_num_1_string
 		BL read_string 				; read number1
-		LDR r3, ptr_to_num_1_string
+		;LDR r3, ptr_to_num_1_string
 		BL output_string 			; output entered number1
-		MOV r0, #0xA 				; ASCII newline
-		BL output_character 		; output newline in terminal
-		MOV r0, #0xD 				; ASCII CR(enter), formats newline to front
-		BL output_character 		; fix newline to front
+		BL do_newline				; format newline for next prompt
 
 		; 2nd prompt and number
-		LDR r3, ptr_to_prompt2
+		LDR r0, ptr_to_prompt2
 		BL output_string 			; output prompt2
-		LDR r3, ptr_to_num_2_string
+		LDR r0, ptr_to_num_2_string
 		BL read_string 				; read number2
-		LDR r3, ptr_to_num_2_string
+		;LDR r3, ptr_to_num_2_string
 		BL output_string 			; output entered number2
-		MOV r0, #0xA
-		BL output_character 		; output newline in terminal
-		MOV r0, #0xD
-		BL output_character 		; fix newline to front
+		BL do_newline				; format newline for next prompt
 
 		; converting number strings to integers
 		LDR r1, ptr_to_num_1_string
@@ -70,15 +64,12 @@ START:
 		MOV r8, r0 					; r8 = number2 as int
 
 		; 3rd prompt and operation
-		LDR r3, ptr_to_prompt3
+		LDR r0, ptr_to_prompt3
 		BL output_string			; output prompt3
 		BL read_character			; read operation char
 		MOV r9, r0					; r9 = entered operation char
 		BL output_character			; output entered operation
-		MOV r0, #0xA
-		BL output_character 		; output newline in terminal
-		MOV r0, #0xD
-		BL output_character 		; fix newline to front
+		BL do_newline				; format newline for displaying result
 
 		; checks for number errors
 		MOV r0, r7
@@ -102,6 +93,9 @@ DO_ADD:
 DO_SUB:
 		SUB r10,r7,r8				; r10 = num1 - num2
 		B RESULT
+
+		; store result (r10) in results str
+		; r7=num1, r8=num2, r9=operation, r10=result
 RESULT:
 		MOV r0,r7					; r0=num1 for num_digits
 		BL num_digits				; num_digits num1
@@ -150,75 +144,69 @@ SKIP_NEG2:
 SKIP_NEG3:
 		BL int2str					; int2str result in results
 
-		LDR r3, ptr_to_results
+		LDR r0, ptr_to_results
 		BL output_string 			; output results
-		MOV r0, #0xA
-		BL output_character 		; output newline in terminal
-		MOV r0, #0xD
-		BL output_character 		; fix newline to front
+		BL do_newline
 		B EXIT
 ERROR1:
-		LDR r3, ptr_to_error1
+		LDR r0, ptr_to_error1
 		BL output_string			; output error1, number out of bounds
-		MOV r0, #0xA
-		BL output_character 		; output newline in terminal
-		MOV r0, #0xD
-		BL output_character 		; fix newline to front
+		BL do_newline
 		B EXIT
 ERROR2:
-		LDR r3, ptr_to_error2
+		LDR r0, ptr_to_error2
 		BL output_string			; output error2, invalid operation
-		MOV r0, #0xA
-		BL output_character 		; output newline in terminal
-		MOV r0, #0xD
-		BL output_character 		; fix newline to front
+		BL do_newline
 		B EXIT
 EXIT:
-		LDR r3, ptr_to_prompt_end
+		LDR r0, ptr_to_prompt_end
 		BL output_string 			; output end prompt
 		BL read_character			; read an entered char
 		BL output_character 		; output entered char
 		MOV r3, r0					; mov char to r3
-		MOV r0, #0xA
-		BL output_character 		; output newline in terminal
-		MOV r0, #0xD
-		BL output_character 		; fix newline to front
+		BL do_newline 				; format newline for next prompt or exit
 		CMP r3,#0x59 				; check if Y was entered
 		BEQ	START					; if so, rerun routine
  	LDMFD sp!, {lr}
 	mov pc, lr
 
 ; input: str from PuTTy terminal
-; output: str stored in memory
-; uses r0 for char, r3 for ptr
+; output: str stored in memory, base address r0
+; uses r0-r1
 read_string:
-	STMFD SP!,{lr}
+	STMFD sp!,{lr}
+	STMFD sp!,{r0-r1}
+	MOV r1, r0				; move str base address to r1
 RS_LOOP:
 		BL read_character
 		CMP r0,#0xD 		; check for enter char
 		BEQ RS_STR_END 		; exit if char='enter'
-		STRB r0,[r3]   		; store char in str
-		ADD r3,r3,#1   		; increment ptr
+		STRB r0,[r1]   		; store char in str
+		ADD r1,r1,#1   		; increment ptr
 		B RS_LOOP
 RS_STR_END:
 		MOV r0, #0x0
-		STRB r0, [r3] 		; store null at end of str
+		STRB r0, [r1] 		; store null at end of str
+	LDMFD sp!, {r0-r1}
  	LDMFD sp!, {lr}
 	mov pc, lr
 
-; input: ptr to a str in r3
+; input: base address of str in r0
 ; output: str in PuTTy terminal
-; uses r0 for char, r3 for ptr
+; uses r0-r1
 output_string:
-	STMFD SP!,{lr}
+	STMFD sp!,{lr}
+	STMFD sp!,{r0-r1}
+	MOV r1,r0				; move str base address to r1
 OS_LOOP:
-		LDRB r0,[r3]   		; load char
+		LDRB r0,[r1]   		; load char
 		CMP r0,#0x0    		; check if char=NULL
 		BEQ OS_STR_END 		; if so, exit
 		BL output_character ; display char
-		ADD r3,r3,#1		; increment ptr
+		ADD r1,r1,#1		; increment ptr
 		B OS_LOOP
 OS_STR_END:
+	LDMFD sp!,{r0-r1}
  	LDMFD sp!, {lr}
 	mov pc, lr
 
@@ -226,7 +214,8 @@ OS_STR_END:
 ; output: char in r0
 ; uses r0-r2
 read_character:
-	STMFD SP!,{lr}
+	STMFD sp!,{lr}
+	STMFD sp!,{r1-r2}
 		MOV r1,#0xC000
 		MOVT r1,#0x4000 	; r1 = base address of UART
 TEST_RFE:
@@ -235,6 +224,7 @@ TEST_RFE:
 		CMP r2,#0x10		; test RxFE in status register
 		BEQ TEST_RFE 		; if RxFE == 1, test again
 		LDRB r0,[r1] 		; else RxFE == 0, read byte (r0) from receive register (r1)
+	LDMFD sp!, {r1-r2}
  	LDMFD sp!, {lr}
 	mov pc, lr
 
@@ -242,7 +232,8 @@ TEST_RFE:
 ; output: char in PuTTy terminal
 ; uses r0-r2
 output_character:
-	STMFD SP!,{lr}
+	STMFD sp!,{lr}
+	STMFD sp!, {r1-r2}
 		MOV r1,#0xC000
 		MOVT r1,#0x4000 	; r1= base address of UART
 TEST_TFF:
@@ -251,6 +242,7 @@ TEST_TFF:
 		CMP r2,#0x20		; test TxFF in status register
 		BEQ TEST_TFF 		; if TxFF == 1, test again
 		STRB r0,[r1] 		; else TxFF == 0, store byte (r0) in transmit register (r1)
+	LDMFD sp!, {r1-r2}
  	LDMFD sp!, {lr}
 	mov pc, lr
 
@@ -328,7 +320,8 @@ uart_init:
 ; output: length of integer in r0
 ; uses r0-r3
 num_digits:
- 	STMFD r13!, {r14}
+ 	STMFD sp!, {lr}
+ 	STMFD sp!, {r1-r3}
  		CMP r0, #0 		; r0=i, check if i is negative
  		BGE ND_START
  		MOV r1, #-1
@@ -342,14 +335,16 @@ ND_LOOP:
 		CMP r0, #0 		; exit if i=0
 		BNE ND_LOOP
 		MOV r0, r2 		; return n in r0
- 	LDMFD r13!, {r14}
+	LDMFD sp!, {r1-r3}
+ 	LDMFD sp!, {lr}
  	MOV pc, lr
 
 ; input: string starting at r1
 ; output: integer in r0
 ; uses r0-r4
 str2int:
- 	STMFD r13!, {r14}
+ 	STMFD sp!, {lr}
+ 	STMFD sp!, {r1-r4}
 		MOV r0, #0		; r0=i, initialize i=0
 		LDRB r2, [r1] 	; load 1st char to see if int is negative
 		MOV r3, #1
@@ -369,14 +364,16 @@ S2I_LOOP:
 		B S2I_LOOP
 S2I_DONE:
 		MULT r0, r3 	; restore int sign if negative
-	LDMFD r13!, {r14}
+	LDMFD sp!, {r1-r4}
+	LDMFD sp!, {lr}
 	MOV pc, lr
 
 ; input: integer in r0, integer length in r2
 ; output: string of the integer starting at r1
 ; uses r0-r6
 int2str:
-	STMFD r13!, {r14}
+	STMFD sp!, {lr}
+	STMFD sp!, {r2-r6}
 		ADD r1,r1,r2	; add num of digits to str ptr, r1=r1+r2
 		MOV r2,#0		; r2 is placeholder for '-' character
 		CMP r0,#0		; check to see if int is negative
@@ -408,7 +405,21 @@ I2S_STOP:
 		SUB r1,r1,#1 	; go to front of string
 		STRB r3,[r1] 	; store '-' at front of string
 I2S_DONE:
-	LDMFD r13!, {r14}
+	LDMFD sp!, {r2-r6}
+	LDMFD sp!, {lr}
 	MOV pc, lr
+
+; formats a newline after a prompt is answered
+; uses r0-r2
+do_newline:
+	STMFD sp!, {lr}
+		MOV r0, #0xA 				; ASCII newline
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD 				; ASCII CR(enter), formats newline to front
+		BL output_character 		; fix newline to front
+	LDMFD sp!, {lr}
+	MOV pc, lr
+
+
 
 .end
