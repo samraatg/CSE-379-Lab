@@ -17,6 +17,7 @@ error1: .string "Error: Number out of bounds, please enter numbers in range 0-99
 error2: .string "Error: Invalid operation",0
 .text
 	.global lab3
+	.global uart_init
 U0FR:  .equ 0x18			; UART0 Flag Register
 ptr_to_prompt1:	.word prompt1
 ptr_to_prompt2: .word prompt2
@@ -101,11 +102,60 @@ DO_ADD:
 DO_SUB:
 		SUB r10,r7,r8				; r10 = num1 - num2
 		B RESULT
-
 RESULT:
-		; int2str num1
-		; int2str num2
-		; write num1, r9, num2, '=', r10 to results str
+		MOV r0,r7					; r0=num1 for num_digits
+		BL num_digits				; num_digits num1
+		MOV r2,r0					; r2=num1 length for int2str
+		LDR r1, ptr_to_results 		; load results as placement str
+		MOV r0,r7					; r0=num1 for int2str
+		MOV r7,r2					; save num1 length for moving ptr past num1
+		CMP r0,#0
+		BGE SKIP_NEG1
+		ADD r7,r7,#1				; if num1<0, length + 1 to account for '-'
+SKIP_NEG1:
+		BL int2str					; int2str num1 in results
+		ADD r1,r1,r7				; move ptr past num1
+
+		STRB r9,[r1]				; store operation char in results
+		ADD r1,r1,#1				; increment ptr
+		MOV r4,r1					; save current ptr in r4 for num2 later
+
+		MOV r0,r8					; r0=num2
+		BL num_digits				; num_digits num2
+		MOV r2,r0					; r2=num2 length for int2str
+		MOV r1,r4					; r1 is current ptr in results
+		MOV r0,r8					; r0=num2
+		MOV r8,r2					; save num2 length for moving ptr past num2
+		CMP r0, #0
+		BGE SKIP_NEG2
+		ADD r8,r8,#1				; if num2<0, length + 1 to account for '-'
+SKIP_NEG2:
+		BL int2str					; int2str num2 in results
+		ADD r1,r1,r8				; move ptr past num2
+
+		MOV r9,#0x3D				; ASCII '='
+		STRB r9,[r1]				; store '=' in results
+		ADD r1,r1,#1				; increment ptr
+		MOV r4,r1					; save current ptr in r4 for result
+
+		MOV r0,r10					; r0=result
+		BL num_digits				; num_digits result
+		MOV r2,r0					; r2=result length for int2str
+		MOV r1,r4					; r1 is current ptr in results
+		MOV r0,r10					; r0=result
+		CMP r0, #0
+		BGE SKIP_NEG3
+		ADD r10,r10,#1				; if result<0, length + 1 to account for '-'
+		MOV r10,r2					; save result length for moving ptr past result
+SKIP_NEG3:
+		BL int2str					; int2str result in results
+
+		LDR r3, ptr_to_results
+		BL output_string 			; output results
+		MOV r0, #0xA
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD
+		BL output_character 		; fix newline to front
 		B EXIT
 ERROR1:
 		LDR r3, ptr_to_error1
@@ -207,69 +257,66 @@ TEST_TFF:
 uart_init:
 	STMFD SP!,{lr}	; Store register lr on stack
 
-	MOV r0,#1
-	MOV r1,#0xE618
-	MOVT r1,#0x400F
-	str r0,[r1]
+		MOV r0,#1
+		MOV r1,#0xE618
+		MOVT r1,#0x400F
+		str r0,[r1]
 
-	MOV r0,#1
-	MOV r1,#0xE608
-	MOVT r1,#0x400F
-	str r0,[r1] 
+		MOV r0,#1
+		MOV r1,#0xE608
+		MOVT r1,#0x400F
+		str r0,[r1]
 
-	MOV r0,#0
-	MOV r1,#0xC030
-	MOVT r1,#0x4000
-	str r0,[r1] 
+		MOV r0,#0
+		MOV r1,#0xC030
+		MOVT r1,#0x4000
+		str r0,[r1]
 
-	MOV r0,#8
-	MOV r1,#0xC024
-	MOVT r1,#0x4000
-	str r0,[r1] 
+		MOV r0,#8
+		MOV r1,#0xC024
+		MOVT r1,#0x4000
+		str r0,[r1]
 
-	MOV r0,#44
-	MOV r1,#0xC028
-	MOVT r1,#0x4000
-	str r0,[r1] 
+		MOV r0,#44
+		MOV r1,#0xC028
+		MOVT r1,#0x4000
+		str r0,[r1]
 
-	MOV r0,#0
-	MOV r1,#0xCFC8
-	MOVT r1,#0x4000
-	str r0,[r1] 
+		MOV r0,#0
+		MOV r1,#0xCFC8
+		MOVT r1,#0x4000
+		str r0,[r1]
 
-	MOV r0,#0x60
-	MOV r1,#0xC02C
-	MOVT r1,#0x4000
-	str r0,[r1] 
+		MOV r0,#0x60
+		MOV r1,#0xC02C
+		MOVT r1,#0x4000
+		str r0,[r1]
 
-	MOV r0,#0x301
-	MOV r1,#0xC030
-	MOVT r1,#0x4000
-	str r0,[r1] 
+		MOV r0,#0x301
+		MOV r1,#0xC030
+		MOVT r1,#0x4000
+		str r0,[r1]
 
-	MOV r0,#0x03
-	MOV r1,#0x451C
-	MOVT r1,#0x4000
-	ldr r2,[r1]
-	ORR r2,r2,r0
-	str r2,[r1]
+		MOV r0,#0x03
+		MOV r1,#0x451C
+		MOVT r1,#0x4000
+		ldr r2,[r1]
+		ORR r2,r2,r0
+		str r2,[r1]
 
-	MOV r0,#0x03
-	MOV r1,#0x4420
-	MOVT r1,#0x4000
-	ldr r2,[r1]
-	ORR r2,r2,r0
-	str r2,[r1]
+		MOV r0,#0x03
+		MOV r1,#0x4420
+		MOVT r1,#0x4000
+		ldr r2,[r1]
+		ORR r2,r2,r0
+		str r2,[r1]
 
-	MOV r0,#0x11
-	MOV r1,#0x452C
-	MOVT r1,#0x4000
-	ldr r2,[r1]
-	ORR r2,r2,r0
-	str r2,[r1]
-
-
-; Your code for your uart_init routine is placed here
+		MOV r0,#0x11
+		MOV r1,#0x452C
+		MOVT r1,#0x4000
+		ldr r2,[r1]
+		ORR r2,r2,r0
+		str r2,[r1]
 
  	LDMFD sp!, {lr}
 	mov pc, lr
@@ -308,7 +355,7 @@ str2int:
 		MOV r3, #1
 		CMP r2, #0x2D 	; compare 1st char with ASCII'-'
 		BNE S2I_LOOP
-		ADD r3, #-1 	; if first char is '-', r3=-1
+		MOV r3, #-1 	; if first char is '-', r3=-1
 		ADD r1, r1, #1	; move ptr to 2nd char (start of int)
 S2I_LOOP:
 		LDRB r2, [r1] 	; r2=char, load char from str ptr
@@ -335,13 +382,13 @@ int2str:
 		CMP r0,#0		; check to see if int is negative
 		BGE I2S_START
 		ADD r1,r1,#1 	; add another "digit" to account for '-'
-		MOV r2,#-1
-		MULT r0,r0,r2 	; make int positive
-		MOV r2,#0x2D 	; store ASCII'-' in r2 to add to str later
+		MOV r3,#-1
+		MULT r0,r0,r3 	; make int positive
+		MOV r3,#0x2D 	; store ASCII'-' in r3 to add to str later
 I2S_START:
 		ADD r1,r1,r2    ; add num of digits to str ptr r1=r1+r2
-		MOV r3,#0x0
-		STRB r3,[r1]	; store NULL at the end of the str
+		MOV r4,#0x0
+		STRB r4,[r1]	; store NULL at the end of the str
 		SUB r1,r1,#1	; increment to next char in str
 I2S_LOOP:
 		MOV r4,#10
@@ -356,10 +403,10 @@ I2S_LOOP:
 		SUB r1,r1,#1	; else i!=0, increment to next char in str
 		B I2S_LOOP
 I2S_STOP:
-		CMP r2,#0x2D 	; check to see if '-' still needs to be in str
+		CMP r3,#0x2D 	; check to see if '-' still needs to be in str
 		BNE I2S_DONE
 		SUB r1,r1,#1 	; go to front of string
-		STRB r2,[r1] 	; store '-' at front of string
+		STRB r3,[r1] 	; store '-' at front of string
 I2S_DONE:
 	LDMFD r13!, {r14}
 	MOV pc, lr
