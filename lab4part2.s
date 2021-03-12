@@ -1,10 +1,11 @@
-		.data
+	.data
 	.global prompt1
 	.global prompt2
+	.global prompt3
 prompt1:	.string "This program changes the color of the LED and displays the time between consecutive button presses",0
-prompt2:	.string "Directions- press switch 1 in the tive board to change light from blue to green",0
-prompt3:	.string "Press switch 1 again to display time between the button pushes and chage LED to red",0	
-	.text
+prompt2:	.string "Press switch 1 on the tiva board to change LED from blue to green",0
+prompt3:	.string "Press switch 1 again to change LED to red and display time between the button pushes",0
+.text
 	.global lab4part2
 	.global non_interrupt_timer_init
 	.global read_character
@@ -18,30 +19,79 @@ prompt3:	.string "Press switch 1 again to display time between the button pushes
 	.global num_digits
 	.global int2str
 	.global str2int
-
+	.global do_newline
 ptr_to_prompt1:	.word prompt1
 ptr_to_prompt2:	.word prompt2
 ptr_to_prompt3:	.word prompt3
 
 lab4part2:
-	STMFD SP!,{lr}	; Store register lr on stack
+	STMFD SP!,{lr, r4-r11}	; Store register lr on stack
 
           ; Your code is placed here
-          
+	; Initalize UART for PuTTy terminal and GPIO for RGB LED and SW1
     BL uart_init
     BL gpio_init
-    
-    ; Display the inroduction and directions
+
+    ; Display the introduction and directions
     LDR r0, ptr_to_prompt1
     BL output_string
+    BL do_newline
     LDR r0, ptr_to_prompt2
 	BL output_string
+	BL do_newline
 	LDR r0, ptr_to_prompt3
-	BL output_string	
-	
-	; Turn on Blue LED
-	mov r0,#0x2
+	BL output_string
+	BL do_newline
+
+	; Turn on blue LED
+	MOV r0,#0x2 ; blue=b010
 	BL illuminate_RGB_LED
+
+	; check for SW1 press
+	MOV r0, #0
+PRESS1:
+	BL read_from_push_btn
+	CMP r0, #1
+	BNE PRESS1
+
+	; record time
+	MOV r4, #0x0050
+	MOVT r4, #0x4003
+	LDR r4, [r4] ; load timer timestamp
+
+	; Turn on green LED
+	MOV r0,#0x4 ; green=b100
+	BL illuminate_RGB_LED
+
+	; wait a little to allow second button press
+	MOV r5, #0
+WAIT_LOOP:
+	CMP r5, #0x100000
+	ADD r5, r5, #1
+	BNE WAIT_LOOP
+
+	; check for SW1 press
+	MOV r0, #0
+PRESS2:
+	BL read_from_push_btn
+	CMP r0, #1
+	BNE PRESS2
+
+	; record time
+	MOV r5, #0x0050
+	MOVT r5, #0x4003
+	LDR r5, [r5] ; load timer timestamp
+
+	; Turn on red LED
+	MOV r0,#0x1 ; red=b001
+	BL illuminate_RGB_LED
+
+	; find time between presses
+	SUB r4, r5, r4 ; subtract timestamps
+	; convert to seconds
+
+
+
 
 	LDMFD sp!, {lr}
 	MOV pc, lr

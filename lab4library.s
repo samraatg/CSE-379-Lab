@@ -10,7 +10,8 @@
 	.global num_digits
 	.global int2str
 	.global str2int
-
+;extras
+	.global do_newline
 	; Your routines go here
 	; Required routines are shown in the global declarations above
 
@@ -147,7 +148,7 @@ uart_init:
 	mov pc, lr
 
 ; initializes onboard RGB LED and SW1 for GPIO use
-init_gpio:
+gpio_init:
 	STMFD sp!, {lr, r4-r11}
 		MOV r4,#0xE000
 		MOVT r4,#0x400F
@@ -192,27 +193,41 @@ illuminate_RGB_LED:
 		  ; 011=purple, 101=yellow, 110=cyan, 111=white
 		  MOV r4, #0x53FC	; move r4 to GPIO port F data register
 		  MOVT r4, #0x4002
+		  LDR r6, [r4]		; load data reg in r6
 		  AND r5, r0, #0x1 	; check bit1
 		  CMP r5, #0x1
-		  BNE AFTER_RED
+		  BEQ RED_ON
 		  LDR r6, [r4]
+		  BIC r6, #0x2 		; set pin1 to 0 for red off
+		  STR r6, [r4]
+		  B BLUE_START
+RED_ON:
 		  ORR r6, #0x2 		; set pin1 to 1 for red on
 		  STR r6, [r4]
-AFTER_RED:
+BLUE_START:
+		  LDR r6, [r4]		; load data reg in r6
 		  AND r5, r0, #0x2 	; check bit2
 		  CMP r5, #0x2
-		  BNE AFTER_BLUE
-		  LDR r6, [r4]
+		  BEQ BLUE_ON
+		  BIC r6, #0x4 		; set pin2 to 0 for blue off
+		  STR r6, [r4]
+		  B GREEN_START
+BLUE_ON:
 		  ORR r6, #0x4 		; set pin2 to 1 for blue on
 		  STR r6, [r4]
-AFTER_BLUE:
+GREEN_START:
+		  LDR r6, [r4]		; load data reg in r6
 		  AND r5, r0, #0x4 	; check bit3
-		  CMP r5, #0x4
-		  BNE AFTER_GREEN
 		  LDR r6, [r4]
+		  CMP r5, #0x4
+		  BEQ GREEN_ON
+		  BIC r6, #0x8 		; set pin3 to 0 for green off
+		  STR r6, [r4]
+		  B IRGB_EXIT
+GREEN_ON:
 		  ORR r6, #0x8 		; set pin3 to 1 for green on
 		  STR r6, [r4]
-AFTER_GREEN:
+IRGB_EXIT:
 	LDMFD sp!, {lr, r4-r11}
 	MOV pc, lr
 
@@ -300,6 +315,17 @@ I2S_DONE:
 	LDMFD sp!, {lr, r4-r11}
 	MOV pc, lr
 
+; extras
+;-----------------------------------------------------------------------------
 
+; formats a newline after string is outputed with UART
+do_newline:
+	STMFD sp!, {lr, r0-r11}
+		MOV r0, #0xA 				; ASCII newline
+		BL output_character 		; output newline in terminal
+		MOV r0, #0xD 				; ASCII CR(enter), formats newline to front
+		BL output_character 		; fix newline to front
+	LDMFD sp!, {lr, r0-r11}
+	MOV pc, lr
 
-.end
+	.end
