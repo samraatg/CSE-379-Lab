@@ -1,7 +1,9 @@
-extern int lab4(void);
+extern void lab4part2(void);
+extern void non_interrupt_timer_init(void);
 
 
 int main()
 {
-   lab4();
+   non_interrupt_timer_init();
+   lab4part2();
 }
