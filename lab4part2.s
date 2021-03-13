@@ -5,6 +5,7 @@
 prompt1:	.string "This program changes the color of the LED and displays the time between consecutive button presses",0
 prompt2:	.string "Press switch 1 on the tiva board to change LED from blue to green",0
 prompt3:	.string "Press switch 1 again to change LED to red and display time between the button pushes",0
+result: 	.string "Seconds between button presses:   ", 0
 .text
 	.global lab4part2
 	.global non_interrupt_timer_init
@@ -23,6 +24,7 @@ prompt3:	.string "Press switch 1 again to change LED to red and display time bet
 ptr_to_prompt1:	.word prompt1
 ptr_to_prompt2:	.word prompt2
 ptr_to_prompt3:	.word prompt3
+ptr_to_result: .word result
 
 lab4part2:
 	STMFD SP!,{lr, r4-r11}	; Store register lr on stack
@@ -88,9 +90,23 @@ PRESS2:
 
 	; find time between presses
 	SUB r4, r5, r4 ; subtract timestamps
+
 	; convert to seconds
+	MOV r5, #0x2400
+	MOVT r5, #0x00F4
+	UDIV r4, r4, r5 ; divide time by 16*10^6 to get seconds
 
-
+	; convert time in seconds to string
+	MOV r0, r4
+	BL num_digits
+	MOV r2, r0
+	MOV r0, r4
+	LDR r1, ptr_to_result
+	ADD r1, r1, #31 ; skip to after : in result string
+	BL int2str
+	LDR r0, ptr_to_result
+	BL output_string
+	Bl do_newline
 
 
 	LDMFD sp!, {lr}
