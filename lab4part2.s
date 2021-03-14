@@ -104,6 +104,8 @@ PRESS2:
 	LDR r1, ptr_to_result
 	ADD r1, r1, #31 ; skip to after : in result string
 	BL int2str
+
+	; output time between presses
 	LDR r0, ptr_to_result
 	BL output_string
 	Bl do_newline

@@ -205,7 +205,7 @@ RED_ON:
 		  ORR r6, #0x2 		; set pin1 to 1 for red on
 		  STR r6, [r4]
 BLUE_START:
-		  LDR r6, [r4]		; load data reg in r6
+		  LDR r6, [r4]		; reload data reg in r6
 		  AND r5, r0, #0x2 	; check bit2
 		  CMP r5, #0x2
 		  BEQ BLUE_ON
@@ -216,7 +216,7 @@ BLUE_ON:
 		  ORR r6, #0x4 		; set pin2 to 1 for blue on
 		  STR r6, [r4]
 GREEN_START:
-		  LDR r6, [r4]		; load data reg in r6
+		  LDR r6, [r4]		; reload data reg in r6
 		  AND r5, r0, #0x4 	; check bit3
 		  LDR r6, [r4]
 		  CMP r5, #0x4
