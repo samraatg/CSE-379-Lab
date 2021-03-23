@@ -82,7 +82,7 @@ timer_init:
  	; connect clock to timer via RCGCTIMER
  	MOV r4, #0xE000
  	MOVT r4, #0x400F
- 	LDR r5, [r4, #0x604] ; T0 RCGCTIMER effecttive address
+ 	LDR r5, [r4, #0x604] ; T0 RCGCTIMER effective address
  	ORR r5, r5, #0x1 ; set bit0 to 1 (enable T0)
  	STR r5, [r4, #0x604]
 
@@ -107,10 +107,10 @@ timer_init:
  	STR r5, [r4, #0x004]
 
  	; setup interrupt interval period via GPTMTAILR
- 	LDR r5, [r4, #0x028]
+ 	;LDR r5, [r4, #0x028] ; GPTMTAILR offset
  	MOV r5, #0x2400
 	MOVT r5, #0x00F4 ; r5 = 16*10^6, timer should be 1s intervals
- 	STR r5, [r4, #0x028] ; GPTMTAILR offset
+ 	STR r5, [r4, #0x028]
 
  	; enable timer to interrupt processor via GPTMIMR
  	LDR r5, [r4, #0x018] ; GPTMIMR offset
@@ -122,7 +122,7 @@ timer_init:
  	MOVT r6, #0xE000 ; EN0 base address
  	LDR r5, [r6, #0x100] ; EN0 offset
  	ORR r5, r5, #0x40000 ; set bit19 to 1 (Timer0A)
- 	LDR r5, [r6, #0x100]
+ 	STR r5, [r6, #0x100]
 
  	; enable timer via GPTMCTL
  	LDR r5, [r4, #0x00C] ; GPTMCTL offset
