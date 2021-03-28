@@ -1,14 +1,4 @@
-	.text
-	.global UART0_Handler
-	.global Switch_Handler
-	.global Timer_Handler
-	.global timer_init
-	.global interrupt_init
-	.global lab5
-	.global uart_init
-	.global gpio_init
-	.global illuminate_RGB_LED
-	.global output_character
+	.data
 board: 	.string "-----------", 0xA, 0xD
 		.string "|         |", 0xA, 0xD
 		.string "|         |", 0xA, 0xD
@@ -21,6 +11,30 @@ board: 	.string "-----------", 0xA, 0xD
 		.string "|         |", 0xA, 0xD
 		.string "|         |", 0xA, 0xD
 		.string "-----------", 0xA, 0xD, 0x0
+
+exit_screen: 	.string " GAME OVER",0
+error_screen: 	.string " Wrong Input",0
+ptr_to_board: .word board
+ptr_to_exit: .word exit_screen
+ptr_to_error: .word error_screen
+
+	.text
+	.global UART0_Handler
+	.global Switch_Handler
+	.global Timer_Handler
+	.global timer_init
+	.global interrupt_init
+	.global lab5
+	.global uart_init
+	.global gpio_init
+	.global illuminate_RGB_LED
+	.global output_character
+UP:  .equ 0x1
+DOWN: .equ 0x2
+LEFT: .equ 0x3
+RIGHT: .equ 0x4
+
+
 lab5:
 	STMFD SP!,{r0-r12,lr}
 	; Your code is placed here
@@ -40,6 +54,8 @@ lab5:
 
  	; if sw1 is pressed go from vertical to horizontal, or vice versa
 
+ 	; index= row*rowWidth + column
+
  	MOV r4, #0xC000
 	MOVT r4, #0x4000 ; base address of UART0 (data register)
 
@@ -52,6 +68,10 @@ LOOP:
 NO_SPACE:
 	CMP r0, #0x71 ; compare data to ASCII 'q'
 	BNE LOOP ; exit if q pressed
+
+EXIT:
+	ldr r0,ptr_to_exit
+	BL output_string
 
  	LDMFD sp!, {r0-r12,lr}
  	MOV pc, lr
@@ -157,6 +177,33 @@ UART0_Handler:
 	LDR r5, [r4, #0x44] ; load UARTICR
 	ORR r5, r5, #0x10 ; set bit 4 (RXIM)
 	STR r5, [r4, #0x44]
+
+	LDRB r5, [r4]
+	CMP r5, 0x51 ; check for q
+	BNE Second_Check
+	B EXIT
+
+Second_Check:
+	CMP r5, 0x20  ; check for space
+	BNE ERROR
+UP_CHECK:
+	CMP r10,UP	   ; r10 keeps track of current direction
+	BNE DOWN_CHECK
+	MOV r10,DOWN
+
+DOWN_CHECK:
+	CMP r10,DOWN
+	BNE LEFT_CHECK
+	MOV r10,UP
+
+LEFT_CHECK:
+    CMP r10,LEFT
+    BNE RIGHT_CHECK
+    MOV r10,RIGHT
+
+RIGHT_CHECK:
+	MOV r10,LEFT
+
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
