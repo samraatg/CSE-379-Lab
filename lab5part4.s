@@ -1,23 +1,20 @@
 	.data
-board: 	.string "-----------", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "|    *    |", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "|         |", 0xA, 0xD
-		.string "-----------", 0xA, 0xD, 0x0
-
-exit_screen: 	.string " GAME OVER",0
-error_screen: 	.string " Wrong Input",0
-ptr_to_board: .word board
-ptr_to_exit: .word exit_screen
-ptr_to_error: .word error_screen
-
+board: 	.string "------------", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "|    *     |", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "|          |", 0xA, 0xD
+		.string "------------", 0xA, 0xD, 0x0
+		; asterisks position range: 0 < 165 (0xA5)
+; can store exit flag, position, and direction in game_data
+; XXXE PSDR		bytes: [0,1]=direction [2-3]=position, [4]=flag
+game_data:	.space 4 ; placeholder for game's data in memory
 	.text
 	.global UART0_Handler
 	.global Switch_Handler
@@ -29,10 +26,18 @@ ptr_to_error: .word error_screen
 	.global gpio_init
 	.global illuminate_RGB_LED
 	.global output_character
-UP:  .equ 0x1
-DOWN: .equ 0x2
-LEFT: .equ 0x3
-RIGHT: .equ 0x4
+	.global output_string
+ptr_to_board: .word board
+ptr_to_game_data: .word game_data
+
+Left: .equ 0x0		; 00 = left
+Right: .equ 0x1		; 01 = right
+Up:  .equ 0x2		; 10 = up
+Down: .equ 0x3		; 11 = down
+EXIT: .equ 0x10		; using byte 4 for exit flag
+
+RowLen: .equ 14		; rows are 14 char long
+
 
 
 lab5:
@@ -43,35 +48,20 @@ lab5:
  	BL interrupt_init
  	BL timer_init
 
- 	; DONE initialize game board, 10x10 asterik in middle
-
- 	; make asktrik drift to right
-
- 	; if space pressed go from right to left, left to right,
- 	; up to down, or down to up
-
- 	; if asterik hits wall, end game
-
- 	; if sw1 is pressed go from vertical to horizontal, or vice versa
-
- 	; index= row*rowWidth + column
-
- 	MOV r4, #0xC000
-	MOVT r4, #0x4000 ; base address of UART0 (data register)
-
+	; push direction and initial coordinates to stack
+	MOV r10, #75 	; asterisks initial position
+	LSL r10, #8		; shift pos into correct bytes
+	ADD r10, r10, #Right	; set dir bits to right
+	; r10 = 0x0000 4B01
+	LDR r9, ptr_to_game_data
+	STR r10, [r9]
 LOOP:
-	LDRB r0,[r4] ; load UARTDATA
-	CMP r0, #0x20 ; compare data to ASCII 'space'
-	BNE NO_SPACE
-	; change direction, right to left, vice versa
-	; or up to down, vice versa
-NO_SPACE:
-	CMP r0, #0x71 ; compare data to ASCII 'q'
-	BNE LOOP ; exit if q pressed
 
-EXIT:
-	ldr r0,ptr_to_exit
-	BL output_string
+	LDR r10, ptr_to_game_data
+	LDR r10, [r10]
+	AND r10, r10, #EXIT
+	CMP r10, #EXIT
+	BNE LOOP
 
  	LDMFD sp!, {r0-r12,lr}
  	MOV pc, lr
@@ -177,33 +167,6 @@ UART0_Handler:
 	LDR r5, [r4, #0x44] ; load UARTICR
 	ORR r5, r5, #0x10 ; set bit 4 (RXIM)
 	STR r5, [r4, #0x44]
-
-	LDRB r5, [r4]
-	CMP r5, 0x51 ; check for q
-	BNE Second_Check
-	B EXIT
-
-Second_Check:
-	CMP r5, 0x20  ; check for space
-	BNE ERROR
-UP_CHECK:
-	CMP r10,UP	   ; r10 keeps track of current direction
-	BNE DOWN_CHECK
-	MOV r10,DOWN
-
-DOWN_CHECK:
-	CMP r10,DOWN
-	BNE LEFT_CHECK
-	MOV r10,UP
-
-LEFT_CHECK:
-    CMP r10,LEFT
-    BNE RIGHT_CHECK
-    MOV r10,RIGHT
-
-RIGHT_CHECK:
-	MOV r10,LEFT
-
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
@@ -216,8 +179,12 @@ Switch_Handler:
 	ORR r5, r5, #0x10 ; set bit 4 (SW1) to clear
 	STR r5, [r4, #0x41C]
 
-	; change dirction, up to down, vice versa
-	; or left to right, vice versa
+	; grab game data
+	LDR r10, ptr_to_game_data
+	LDR r10, [r10]
+	; isolate dir bits
+	AND r9, r10, #2
+	; find dir and swap it
 
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
@@ -231,8 +198,58 @@ Timer_Handler:
  	ORR r5, r5, #0x1 ; set bit0 to 1 (TATOCINT)
  	STR r5, [r4, #0x024]
 
-	; swap asterik with next position
+ 	; print board
+ 	LDR r0, ptr_to_board
+	BL output_string
 
+	; load game_data into r10
+	LDR r10, ptr_to_game_data
+	LDR r10, [r10]
+	; grab asterisks position and direction
+	UBFX r9, r10, #8, #8
+	AND r8, r10, #0xFF
+
+	; find position of character to swap with
+	CMP r8, #Up
+	BNE DOWN
+	SUB r7, r9, #13 ; move asterisks up 1 row
+	B SWAP
+DOWN:
+	CMP r8, #Down
+	BNE LEFT
+	ADD r7, r9, #13 ; move asterisks down 1 row
+	B SWAP
+LEFT:
+	CMP r8, #Left
+	BNE RIGHT
+	SUB r7, r9, #1 ; move asterisks left 1 column
+	B SWAP
+RIGHT:
+	CMP r8, #Right
+	BNE SWAP
+	ADD r7, r9, #1 ; move asterisks right 1 column
+
+SWAP:
+	; swap characters at indices pointed to by r7 and r9
+	LDR r0, ptr_to_board
+	LDRB r4, [r0, r7]
+	LDRB r5, [r0, r9]
+	STRB r4, [r0, r9]
+	STRB r5, [r0, r7]
+
+	; store game data in memory
+	BFI r10, r7, #8, #8	; store new pos
+	CMP r4, #0x7C ; ASCII "|"
+	BEQ SET_EF
+	CMP r4, #0x2D ; ASCII "-"
+	BEQ SET_EF
+	B TH_EXIT
+SET_EF:
+	ORR r10, r10, #EXIT ; set exit flag if boundary is hit
+TH_EXIT:
+	; store game_data in memory
+	LDR r9, ptr_to_game_data
+	STR r10, [r9]
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
