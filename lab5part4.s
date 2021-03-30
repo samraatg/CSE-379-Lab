@@ -14,7 +14,7 @@ board: 	.string "------------", 0xA, 0xD
 game_over:	.string "GAME OVER: You Collided With A Wall",0x0
 ; asterisks position range: 0 < 165 (0xA5)
 ; can store exit flag, position, and direction in game_data
-; XXXE PSDR		bytes: [0,1]=direction [2-3]=position, [4]=exitflag
+; PPED	bytes: [0]=direction, [1]=exitflag [2-3]=position
 game_data:	.space 4 ; placeholder for game data in memory
 	.text
 	.global UART0_Handler
@@ -36,7 +36,7 @@ Left: .equ 0x0		; 00 = left
 Right: .equ 0x1		; 01 = right
 Up:  .equ 0x2		; 10 = up
 Down: .equ 0x3		; 11 = down
-EXIT: .equ 0x10		; using byte 4 for exit flag
+EXIT: .equ 0x10		; using byte 1 for exit flag
 
 RowLen: .equ 14		; rows are 14 char long
 
