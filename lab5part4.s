@@ -167,6 +167,22 @@ UART0_Handler:
 	LDR r5, [r4, #0x44] ; load UARTICR
 	ORR r5, r5, #0x10 ; set bit 4 (RXIM)
 	STR r5, [r4, #0x44]
+
+	; load game data
+	LDR r10, ptr_to_game_data
+	LDR r9, [r10]
+
+	; load uart data
+	LDR r5, [r4]
+	CMP r5, #0x71 ; check if char is ASCII 'q'
+	BNE SPACE
+	ORR r9, r9, #EXIT ; set exit flag if boundary is hit
+SPACE:
+	CMP r5, #0x20	; check if char is ASCII ' '
+	BNE UH_DONE
+	EOR r9, r9, #0x1 ; change dir from l<->r or u<->d
+UH_DONE:
+	STR r9, [r10] 	; store new game data
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
@@ -181,10 +197,9 @@ Switch_Handler:
 
 	; grab game data
 	LDR r10, ptr_to_game_data
-	LDR r10, [r10]
-	; isolate dir bits
-	AND r9, r10, #2
-	; find dir and swap it
+	LDR r9, [r10]
+	EOR r9, r9, #0x3		; invert dir bits to change from ud<->lr
+	STR r9, [r10]
 
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
@@ -212,12 +227,12 @@ Timer_Handler:
 	; find position of character to swap with
 	CMP r8, #Up
 	BNE DOWN
-	SUB r7, r9, #13 ; move asterisks up 1 row
+	SUB r7, r9, #RowLen ; move asterisks up 1 row
 	B SWAP
 DOWN:
 	CMP r8, #Down
 	BNE LEFT
-	ADD r7, r9, #13 ; move asterisks down 1 row
+	ADD r7, r9, #RowLen ; move asterisks down 1 row
 	B SWAP
 LEFT:
 	CMP r8, #Left
