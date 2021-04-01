@@ -1,12 +1,13 @@
 	.data
 
 x:	.string 27,"[01mx",0
+blue_circle: .string 27,"[34mo",0
 green_circle: .string 27,"[32mo",0
 cyan_circle: .string 27,"[36mo",0
 white_circle: .string 27,"[37mo",0
 yellow_circle: .string 27,"[33mo",0
 red_circle:	.string 27,"[31mo",0
-my_string:	.string 27,"[31mPress ",0
+magenta_circle:	.string 27,"[35mo",0
 cursor: .string 27,"[8;14H"
 
 
@@ -27,12 +28,14 @@ cursor: .string 27,"[8;14H"
 ;green_circle: .equ 0x0
 
 
-ptr_to_string: .word my_string
+
+ptr_to_blueCircle:	.word blue_circle
 ptr_to_greenCircle:	.word green_circle
 ptr_to_redCircle:	.word red_circle
 ptr_to_cyanCircle:	.word cyan_circle
 ptr_to_whiteCircle:	.word white_circle
 ptr_to_yellowCircle:	.word yellow_circle
+ptr_to_magentaCircle:	.word magenta_circle
 ptr_to_cursor:	.word cursor
 ptr_to_x:	.word x
 
@@ -40,16 +43,12 @@ lab5:
 	STMFD SP!,{r0-r12,lr}
  	BL uart_init
  	BL gpio_init
+	BL interrupt_init
 
 	LDR r0, ptr_to_cursor
 	BL output_string
 
-	LDR r0, ptr_to_cursor
-	BL output_string
-
-	;LDR r0, ptr_to_redCircle
-	;BL output_string
-
+;print 10 X's
 	mov r5,#0
 X_loop:
 	add r5,#1
