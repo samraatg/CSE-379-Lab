@@ -1,6 +1,6 @@
 	.data
 
-x:	.string 27,"[01mx",0
+x:	.string 27,"[37mx",0
 blue_circle: .string 27,"[34mo",0
 green_circle: .string 27,"[32mo",0
 cyan_circle: .string 27,"[36mo",0
@@ -9,6 +9,12 @@ yellow_circle: .string 27,"[33mo",0
 red_circle:	.string 27,"[31mo",0
 magenta_circle:	.string 27,"[35mo",0
 cursor: .string 27,"[0;0H",0
+save_cur: .string 27, "[s",0
+restore_cur: .string 27, "[u",0
+up:	.string 27,"[1A",0
+down:	.string 27,"[1B",0
+right:	.string 27,"[1C",0
+left:	.string 27,"[1D",0
 
 
 	.text
@@ -37,7 +43,13 @@ ptr_to_whiteCircle:	.word white_circle
 ptr_to_yellowCircle:	.word yellow_circle
 ptr_to_magentaCircle:	.word magenta_circle
 ptr_to_cursor:	.word cursor
+ptr_to_up: .word up
+ptr_to_down: .word down
+ptr_to_right: .word right
+ptr_to_left: .word left
 ptr_to_x:	.word x
+ptr_to_save_cur: .word save_cur
+ptr_to_restore_cur: .word restore_cur
 
 lab6:
 	STMFD SP!,{r0-r12,lr}
@@ -46,24 +58,68 @@ lab6:
 	BL interrupt_init
 
 	LDR r0, ptr_to_cursor
-	LDR r4, [r0] 		;top half of cursor (ESC [8;)
-	LDR r5, [r0, #4]	; bottom half of cursor (14H 0x0)
 	BL output_string
-
-;print 10 X's
-	mov r5,#0
-X_loop:
+	LDR r0, ptr_to_save_cur
+	BL output_string
+;print 9 X's
+	mov r5,#1
+First:
 	add r5,#1
 	LDR r0,ptr_to_x
 	BL output_string
-	cmp r5,#10
-	BNE X_loop
+	cmp r5, #10
+	BNE First
 
-
+second:
+	LDR r0, ptr_to_restore_cur
+	BL output_string
+	LDR r0, ptr_to_down
+	BL output_string
+	LDR r0, ptr_to_save_cur
+	BL output_string
+	LDR r0, ptr_to_x
+	BL output_string
 	LDR r0, ptr_to_greenCircle
 	BL output_string
-LOOP:
-	B LOOP
+	LDR r0, ptr_to_right
+	BL output_string
+	BL output_string
+	BL output_string
+	LDR r0, ptr_to_cyanCircle
+	BL output_string
+	LDR r0, ptr_to_right
+	BL output_string
+	LDR r0, ptr_to_redCircle
+	BL output_string
+	LDR r0, ptr_to_x
+	BL output_string
+
+third:
+	LDR r0, ptr_to_restore_cur
+	BL output_string
+	LDR r0, ptr_to_down
+	BL output_string
+	LDR r0, ptr_to_save_cur
+	BL output_string
+	LDR r0, ptr_to_x
+	BL output_string
+	LDR r0, ptr_to_right
+	BL output_string
+	BL output_string
+	LDR r0, ptr_to_cyanCircle
+	BL output_string
+	LDR r0, ptr_to_right
+	BL output_string
+	BL output_string
+	BL output_string
+	LDR r0, ptr_to_blueCircle
+	BL output_string
+	LDR r0, ptr_to_x
+	BL output_string
+loop:
+	mov r0, #1
+	CMP r0, #0
+	BNE loop
 
 	LDMFD sp!, {r0-r12,lr}
  	MOV pc, lr
@@ -80,37 +136,26 @@ UART0_Handler:
 
 	; load uart data (char input)
 	LDR r6, [r4]
-	LDR r5, ptr_to_cursor
-	LDR r7, [r5] 		;top half of cursor (ESC [8;)
-	LDR r8, [r5, #4]	; bottom half of cursor (14H 0x0)
-	; grab row and column of cursor
-	UBFX r9, r7, #16, #8	; r9 = line
-	UBFX r10, r8, #0, #16	; r10 = column
 UP:
 	CMP r6, #0x77 ; check if char is ASCII 'w'
 	BNE DOWN
-	ADD r9, r9, #1	; move line up
+	LDR r0, ptr_to_up
+	BL output_string
 DOWN:
 	CMP r6, #0x73 	; check if char is ASCII 's'
 	BNE LEFT
-	SUB r9, r9, #1	; move line down
+	LDR r0, ptr_to_down
+	BL output_string
 LEFT:
 	CMP r6, #0x61 	; check if char is ASCII 'a'
 	BNE RIGHT
-	SUB r10, r10, #0x100	; move column left
+	LDR r0, ptr_to_left
+	BL output_string
 RIGHT:
 	CMP r6, #0x64 	; check if char is ASCII 'd'
-	BNE ELSE
-	ADD r10, r10, #0x100	; move column right
-ELSE:
-	; update postion
-	BFI r7, r9, #16, #8
-	BFI r8, r10, #0, #16
-	STR r7, [r5] 			; store top half of cursor (ESC [8;)
-	STR r8, [r5, #4]		; store bottom half of cursor (14H 0x0)
-	; output cursor
-	MOV r0, r5
+	LDR r0, ptr_to_right
 	BL output_string
+
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 

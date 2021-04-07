@@ -142,7 +142,7 @@ TEST_TFF:
 ; input: base address of str in r0
 ; output: str in PuTTy terminal
 output_string:
-	STMFD sp!,{lr, r4-r11}
+	STMFD sp!,{lr, r0-r12}
 	MOV r5,r0				; move str base address to r1
 OS_LOOP:
 		LDRB r0,[r5]   		; load char
@@ -152,7 +152,7 @@ OS_LOOP:
 		ADD r5,r5,#1		; increment ptr
 		B OS_LOOP
 OS_STR_END:
- 	LDMFD sp!, {lr, r4-r11}
+ 	LDMFD sp!, {lr, r0-r12}
 	mov pc, lr
 
 ; input: str from PuTTy terminal
