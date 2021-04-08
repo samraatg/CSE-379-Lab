@@ -1,23 +1,22 @@
 	.data
-
-x:	.string 27,"[37mx",0
-blue_circle: .string 27,"[34mo",0
-green_circle: .string 27,"[32mo",0
-cyan_circle: .string 27,"[36mo",0
-white_circle: .string 27,"[37mo",0
-yellow_circle: .string 27,"[33mo",0
-red_circle:	.string 27,"[31mo",0
-magenta_circle:	.string 27,"[35mo",0
-cursor: .string 27,"[0;0H",0
-save_cur: .string 27, "[s",0
-restore_cur: .string 27, "[u",0
-up:	.string 27,"[1A",0
-down:	.string 27,"[1B",0
-right:	.string 27,"[1C",0
-left:	.string 27,"[1D",0
-
-
+; ANSI Escape Sequences for cursor control and board printing
+CUR: 		.string 27,"[0;0H",0
+CUR_SAV: 	.string 27,"[s",0
+CUR_RES: 	.string 27,"[u",0
+CUR_U:		.string 27,"[1A",0
+CUR_D:		.string 27,"[1B",0
+CUR_R:		.string 27,"[1C",0
+CUR_L:		.string 27,"[1D",0
+X_LINE:		.string 27,"[s",27,"[37mXXXXXXXXX",27,"[u",27,"[1B",0
+B1_L1: 		.string 27,"[s",27,"[37mX",27,"[32mO","   ",27,"[36mO"," ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",0
+B1_L2: 		.string 27,"[s",27,"[37mX","  ",27,"[36mO","   ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",0
+B1_L3: 		.string 27,"[s",27,"[37mX","  ",27,"[34mO","    ",27,"[37mX",27,"[u",27,"[1B",0
+B1_L4: 		.string 27,"[s",27,"[37mX"," ",27,"[31mO","   ",27,"[37mO"," ",27,"[37mX",27,"[u",27,"[1B",0
+B1_L5: 		.string 27,"[s",27,"[37mX","   ",27,"[37mO","   ",27,"[37mX",27,"[u",27,"[1B",0
+B1_L6: 		.string 27,"[s",27,"[37mX"," ",27,"[35mO","  ",27,"[33mO","  ",27,"[37mX",27,"[u",27,"[1B",0
+B1_L7: 		.string 27,"[s",27,"[37mX","   ",27,"[33mO"," ",27,"[32mO",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",0
 	.text
+; Library Subroutines
 	.global UART0_Handler
 	.global Switch_Handler
 	.global Timer_Handler
@@ -30,92 +29,53 @@ left:	.string 27,"[1D",0
 	.global output_character
 	.global output_string
 	.global interrupt_init
+; String Pointers
+ptr_to_CUR: .word CUR
+ptr_to_CUR_SAV: .word CUR_SAV
+ptr_to_CUR_RES: .word CUR_RES
+ptr_to_CUR_U: .word CUR_U
+ptr_to_CUR_D: .word CUR_D
+ptr_to_CUR_R: .word CUR_R
+ptr_to_CUR_L: .word CUR_L
+ptr_to_X_LINE: .word X_LINE
+ptr_to_B1_L1: .word B1_L1
+ptr_to_B1_L2: .word B1_L2
+ptr_to_B1_L3: .word B1_L3
+ptr_to_B1_L4: .word B1_L4
+ptr_to_B1_L5: .word B1_L5
+ptr_to_B1_L6: .word B1_L6
+ptr_to_B1_L7: .word B1_L7
 
-;green_circle: .equ 0x0
-
-
-
-ptr_to_blueCircle:	.word blue_circle
-ptr_to_greenCircle:	.word green_circle
-ptr_to_redCircle:	.word red_circle
-ptr_to_cyanCircle:	.word cyan_circle
-ptr_to_whiteCircle:	.word white_circle
-ptr_to_yellowCircle:	.word yellow_circle
-ptr_to_magentaCircle:	.word magenta_circle
-ptr_to_cursor:	.word cursor
-ptr_to_up: .word up
-ptr_to_down: .word down
-ptr_to_right: .word right
-ptr_to_left: .word left
-ptr_to_x:	.word x
-ptr_to_save_cur: .word save_cur
-ptr_to_restore_cur: .word restore_cur
-
+; Main Routine
 lab6:
 	STMFD SP!,{r0-r12,lr}
+	; initializations
  	BL uart_init
  	BL gpio_init
 	BL interrupt_init
 
-	LDR r0, ptr_to_cursor
+	; print game board
+	LDR r0, ptr_to_CUR		; initialize cursor
 	BL output_string
-	LDR r0, ptr_to_save_cur
+	LDR r0, ptr_to_X_LINE	; top X line
 	BL output_string
-;print 9 X's
-	mov r5,#1
-First:
-	add r5,#1
-	LDR r0,ptr_to_x
+	LDR r0, ptr_to_B1_L1	; 1st line
 	BL output_string
-	cmp r5, #10
-	BNE First
-
-second:
-	LDR r0, ptr_to_restore_cur
+	LDR r0, ptr_to_B1_L2	; 2nd line
 	BL output_string
-	LDR r0, ptr_to_down
+	LDR r0, ptr_to_B1_L3	; 3rd line
 	BL output_string
-	LDR r0, ptr_to_save_cur
+	LDR r0, ptr_to_B1_L4	; 4th line
 	BL output_string
-	LDR r0, ptr_to_x
+	LDR r0, ptr_to_B1_L5	; 5th line
 	BL output_string
-	LDR r0, ptr_to_greenCircle
+	LDR r0, ptr_to_B1_L6	; 6th line
 	BL output_string
-	LDR r0, ptr_to_right
+	LDR r0, ptr_to_B1_L7	; 7th line
 	BL output_string
-	BL output_string
-	BL output_string
-	LDR r0, ptr_to_cyanCircle
-	BL output_string
-	LDR r0, ptr_to_right
-	BL output_string
-	LDR r0, ptr_to_redCircle
-	BL output_string
-	LDR r0, ptr_to_x
+	LDR r0, ptr_to_X_LINE	; bottom X line
 	BL output_string
 
-third:
-	LDR r0, ptr_to_restore_cur
-	BL output_string
-	LDR r0, ptr_to_down
-	BL output_string
-	LDR r0, ptr_to_save_cur
-	BL output_string
-	LDR r0, ptr_to_x
-	BL output_string
-	LDR r0, ptr_to_right
-	BL output_string
-	BL output_string
-	LDR r0, ptr_to_cyanCircle
-	BL output_string
-	LDR r0, ptr_to_right
-	BL output_string
-	BL output_string
-	BL output_string
-	LDR r0, ptr_to_blueCircle
-	BL output_string
-	LDR r0, ptr_to_x
-	BL output_string
 loop:
 	mov r0, #1
 	CMP r0, #0
@@ -139,23 +99,24 @@ UART0_Handler:
 UP:
 	CMP r6, #0x77 ; check if char is ASCII 'w'
 	BNE DOWN
-	LDR r0, ptr_to_up
+	LDR r0, ptr_to_CUR_U
 	BL output_string
 DOWN:
 	CMP r6, #0x73 	; check if char is ASCII 's'
 	BNE LEFT
-	LDR r0, ptr_to_down
+	LDR r0, ptr_to_CUR_D
 	BL output_string
 LEFT:
 	CMP r6, #0x61 	; check if char is ASCII 'a'
 	BNE RIGHT
-	LDR r0, ptr_to_left
+	LDR r0, ptr_to_CUR_L
 	BL output_string
 RIGHT:
 	CMP r6, #0x64 	; check if char is ASCII 'd'
-	LDR r0, ptr_to_right
+	BNE NO_DIR
+	LDR r0, ptr_to_CUR_R
 	BL output_string
-
+NO_DIR:
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
