@@ -8,13 +8,7 @@ CUR_D:		.string 27,"[1B",0
 CUR_R:		.string 27,"[1C",0
 CUR_L:		.string 27,"[1D",0
 X_LINE:		.string 27,"[s",27,"[37mXXXXXXXXX",27,"[u",27,"[1B",0
-B1_L1: 		.string 27,"[s",27,"[37mX",27,"[32mO","   ",27,"[36mO"," ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",0
-B1_L2: 		.string 27,"[s",27,"[37mX","  ",27,"[36mO","   ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",0
-B1_L3: 		.string 27,"[s",27,"[37mX","  ",27,"[34mO","    ",27,"[37mX",27,"[u",27,"[1B",0
-B1_L4: 		.string 27,"[s",27,"[37mX"," ",27,"[31mO","   ",27,"[37mO"," ",27,"[37mX",27,"[u",27,"[1B",0
-B1_L5: 		.string 27,"[s",27,"[37mX","   ",27,"[37mO","   ",27,"[37mX",27,"[u",27,"[1B",0
-B1_L6: 		.string 27,"[s",27,"[37mX"," ",27,"[35mO","  ",27,"[33mO","  ",27,"[37mX",27,"[u",27,"[1B",0
-B1_L7: 		.string 27,"[s",27,"[37mX","   ",27,"[33mO"," ",27,"[32mO",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",0
+BOARD1: 	.string 27,"[s",27,"[37mX",27,"[32mO","   ",27,"[36mO"," ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","  ",27,"[36mO","   ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","  ",27,"[34mO","    ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[31mO","   ",27,"[37mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[37mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[35mO","  ",27,"[33mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[33mO"," ",27,"[32mO",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",0
 	.text
 ; Library Subroutines
 	.global UART0_Handler
@@ -38,13 +32,13 @@ ptr_to_CUR_D: .word CUR_D
 ptr_to_CUR_R: .word CUR_R
 ptr_to_CUR_L: .word CUR_L
 ptr_to_X_LINE: .word X_LINE
-ptr_to_B1_L1: .word B1_L1
-ptr_to_B1_L2: .word B1_L2
-ptr_to_B1_L3: .word B1_L3
-ptr_to_B1_L4: .word B1_L4
-ptr_to_B1_L5: .word B1_L5
-ptr_to_B1_L6: .word B1_L6
-ptr_to_B1_L7: .word B1_L7
+ptr_to_BOARD1: .word BOARD1
+;ptr_to_B1_L2: .word B1_L2
+;ptr_to_B1_L3: .word B1_L3
+;ptr_to_B1_L4: .word B1_L4
+;ptr_to_B1_L5: .word B1_L5
+;ptr_to_B1_L6: .word B1_L6
+;ptr_to_B1_L7: .word B1_L7
 
 ; Main Routine
 lab6:
@@ -59,19 +53,7 @@ lab6:
 	BL output_string
 	LDR r0, ptr_to_X_LINE	; top X line
 	BL output_string
-	LDR r0, ptr_to_B1_L1	; 1st line
-	BL output_string
-	LDR r0, ptr_to_B1_L2	; 2nd line
-	BL output_string
-	LDR r0, ptr_to_B1_L3	; 3rd line
-	BL output_string
-	LDR r0, ptr_to_B1_L4	; 4th line
-	BL output_string
-	LDR r0, ptr_to_B1_L5	; 5th line
-	BL output_string
-	LDR r0, ptr_to_B1_L6	; 6th line
-	BL output_string
-	LDR r0, ptr_to_B1_L7	; 7th line
+	LDR r0, ptr_to_BOARD1	; 1st line
 	BL output_string
 	LDR r0, ptr_to_X_LINE	; bottom X line
 	BL output_string
