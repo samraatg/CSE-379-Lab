@@ -1,4 +1,10 @@
 	.data
+	   ;Intro Screen
+name:   .string "Welcome to Free Flow!!",0
+play:   .string "To start the game press enter",0
+clear:  .string 27,"[2J",0
+center: .string 27,"[12;35H",0
+next:   .string 27,"[13;30H",0
 ; ANSI Escape Sequences for cursor control and board printing
 CUR: 		.string 27,"[0;0H",0
 CUR_SAV: 	.string 27,"[s",0
@@ -39,7 +45,11 @@ ptr_to_BOARD1: .word BOARD1
 ;ptr_to_B1_L5: .word B1_L5
 ;ptr_to_B1_L6: .word B1_L6
 ;ptr_to_B1_L7: .word B1_L7
-
+ptr_to_name: .word name
+ptr_to_play: .word play
+ptr_to_clear: .word clear
+ptr_to_center: .word center
+ptr_to_next: .word next
 ; Main Routine
 lab6:
 	STMFD SP!,{r0-r12,lr}
@@ -57,6 +67,31 @@ lab6:
 	BL output_string
 	LDR r0, ptr_to_X_LINE	; bottom X line
 	BL output_string
+;Intro
+
+	ldr r0,ptr_to_clear
+    BL output_string
+
+	ldr r0,ptr_to_center
+    BL output_string
+
+    ldr r0,ptr_to_name
+    BL output_string
+
+    ldr r0,ptr_to_next
+    BL output_string
+
+    ldr r0,ptr_to_play
+    BL output_string
+
+    MOV r4, #0xC000
+	MOVT r4, #0x4000
+
+intro_loop:
+
+    LDR r6, [r4]
+    cmp r6,#0xD
+    BNE intro_loop
 
 loop:
 	mov r0, #1
@@ -78,6 +113,12 @@ UART0_Handler:
 
 	; load uart data (char input)
 	LDR r6, [r4]
+
+introduction:
+    cmp r6,#0xD
+    BNE NO_DIR
+    ldr r0,ptr_to_clear
+    BL output_string
 UP:
 	CMP r6, #0x77 ; check if char is ASCII 'w'
 	BNE DOWN
