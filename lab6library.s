@@ -6,13 +6,12 @@
 	.global read_string
 	.global uart_init
 	.global gpio_init
+	.global timer_init
 	.global read_from_push_btn
 	.global illuminate_RGB_LED
 	.global num_digits
 	.global int2str
 	.global str2int
-;extras
-	.global do_newline
 	; Your routines go here
 	; Required routines are shown in the global declarations above
 
@@ -142,24 +141,24 @@ TEST_TFF:
 ; input: base address of str in r0
 ; output: str in PuTTy terminal
 output_string:
-	STMFD sp!,{lr, r0-r12}
-	MOV r5,r0				; move str base address to r1
+	STMFD sp!,{lr, r0-r11}
+	MOV r5,r0			; move str base address to r5
 OS_LOOP:
-		LDRB r0,[r5]   		; load char
-		CMP r0,#0x0    		; check if char=NULL
-		BEQ OS_STR_END 		; if so, exit
-		BL output_character ; display char
-		ADD r5,r5,#1		; increment ptr
-		B OS_LOOP
+	LDRB r0,[r5]   		; load char
+	CMP r0,#0x0    		; check if char=NULL
+	BEQ OS_STR_END 		; if so, exit
+	BL output_character ; display char
+	ADD r5,r5,#1		; increment ptr
+	B OS_LOOP
 OS_STR_END:
- 	LDMFD sp!, {lr, r0-r12}
+ 	LDMFD sp!, {lr, r0-r11}
 	mov pc, lr
 
 ; input: str from PuTTy terminal
 ; output: str stored in memory, base address r0
 read_string:
 	STMFD sp!,{lr, r4-r11}
-	MOV r4, r0				; move str base address to r1
+	MOV r4, r0				; move str base address to r4
 RS_LOOP:
 		BL read_character
 		CMP r0,#0xD 		; check for enter char
@@ -359,6 +358,8 @@ S2I_LOOP:
 		LDRB r4, [r1] 	; r4=char, load char from str ptr
 		CMP r4, #0x0 	; if char=NULL, exit
 		BEQ S2I_DONE
+		CMP r4, #0xA
+		BEQ S2I_DONE	; if char=newline, exit
 		MOV r6, #10
 		MULT r0,r0,r6 	; r0=i, i=i*10
 		SUB r4,r4,#0x30 ; r4=dig, dig=ASCII'dig'-ASCII'0'
@@ -406,19 +407,6 @@ I2S_STOP:
 		STRB r7,[r1] 	; store '-' at front of string
 I2S_DONE:
 	LDMFD sp!, {lr, r4-r11}
-	MOV pc, lr
-
-; extras
-;-----------------------------------------------------------------------------
-
-; formats a newline after string is outputed with UART
-do_newline:
-	STMFD sp!, {lr, r0-r11}
-		MOV r0, #0xA 				; ASCII newline
-		BL output_character 		; output newline in terminal
-		MOV r0, #0xD 				; ASCII CR(enter), formats newline to front
-		BL output_character 		; fix newline to front
-	LDMFD sp!, {lr, r0-r11}
 	MOV pc, lr
 
 	.end
