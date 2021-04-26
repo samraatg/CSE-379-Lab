@@ -1,4 +1,5 @@
 	.text
+	; Required routines
 	.global interrupt_init
 	.global read_character
 	.global output_character
@@ -12,8 +13,6 @@
 	.global num_digits
 	.global int2str
 	.global str2int
-	; Your routines go here
-	; Required routines are shown in the global declarations above
 
 ; initialize timer 0 for interrupts every 1 second
 timer_init:
@@ -359,11 +358,14 @@ S2I_LOOP:
 		CMP r4, #0x0 	; if char=NULL, exit
 		BEQ S2I_DONE
 		CMP r4, #0xA
-		BEQ S2I_DONE	; if char=newline, exit
+		BEQ S2I_SKIP	; if char=newline, skip
+		CMP r4, #0xD
+		BEQ S2I_SKIP	; if char=carriage return, skip
 		MOV r6, #10
 		MULT r0,r0,r6 	; r0=i, i=i*10
 		SUB r4,r4,#0x30 ; r4=dig, dig=ASCII'dig'-ASCII'0'
 		ADD r0,r0,r4 	; i=i+dig
+S2I_SKIP:
 		ADD r1,r1,#1 	; increment ptr
 		B S2I_LOOP
 S2I_DONE:
@@ -408,5 +410,6 @@ I2S_STOP:
 I2S_DONE:
 	LDMFD sp!, {lr, r4-r11}
 	MOV pc, lr
+
 
 	.end

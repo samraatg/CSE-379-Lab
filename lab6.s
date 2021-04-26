@@ -1,12 +1,15 @@
 	.data
-;512 byte allocation for current game board
+; 512 byte allocation for current game board
 board: .space 512
-; there should be an allocation for game data (state, time, levels completed)
-
+; 4 byte game data allocation
+; XXXX YYY M where X is time, Y is board #, M is mode
+game_data:  .space 4
+time:		.int 0
 ; ANSI Escape Sequence strings for cursor control and board printing
 LINE1:		.string 27,"[1;0H",0
 LINE2:		.string 27,"[2;0H",0
-CUR: 		.string 27,"[3;0H",0
+LINE3:		.string 27,"[3;0H",0
+CUR: 		.string 27,"[7;5H",0
 CUR_SAV: 	.string 27,"[s",0
 CUR_RES: 	.string 27,"[u",0
 CUR_U:		.string 27,"[1A",0
@@ -36,8 +39,8 @@ BOARD14:	.string 27,"[s",27,"[37mX","  ",27,"[31mO",27,"[32mO","  ",27,"[32mO",2
 BOARD15:	.string 27,"[s",27,"[37mX"," ",27,"[32mO",27,"[36mO",27,"[32mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[35mO"," ",27,"[31mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[34mO"," ",27,"[31mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[37mO",27,"[34mO",27,"[33mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","       ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[35mO",27,"[36mO",27,"[37mO"," ",27,"[33mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","       ",27,"[37mX",27,"[u",27,"[1B",0
 BOARD16:	.string 27,"[s",27,"[37mX","       ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","     ",27,"[31mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","  ",27,"[32mO",27,"[32mO",27,"[36mO",27,"[31mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","  ",27,"[37mO",27,"[33mO"," ",27,"[34mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","  ",27,"[37mO",27,"[33mO",27,"[34mO",27,"[35mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","     ",27,"[35mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[36mO","   ",27,"[37mX",27,"[u",27,"[1B",0
 ; strings for other data/prompts
-TIME:			.string "Time: 0000",0xA,0xD,0
-CONNECTIONS: 	.string "Completed: 0/7",0xA,0xD,0
+TIME_HEADER:	.string "Time: 0   ",0
+CONN_HEADER: 	.string "Completed: 0/7",0
 PAUSE:			.string "Game Paused",0xA,0xD,0
 RESTART_NEW:	.string "(1) Restart New Board",0xA,0xD,0
 RESTART_CUR:	.string "(2) Restart Current Board",0xA,0xD,0
@@ -60,10 +63,14 @@ RESUME:			.string "(SW1) Resume Current Board",0xA,0xD,0
 	.global int2str
 	.global str2int
 	.global num_digits
-; String Pointers
+; Game Data Pointers
 ptr_to_board: 	.word board
+ptr_to_time: 	.word time
+ptr_to_game_data:	.word game_data
+; String Pointers
 ptr_to_LINE1:	.word LINE1
 ptr_to_LINE2:	.word LINE2
+ptr_to_LINE3:	.word LINE3
 ptr_to_CUR: 	.word CUR
 ptr_to_CUR_SAV: .word CUR_SAV
 ptr_to_CUR_RES: .word CUR_RES
@@ -89,12 +96,13 @@ ptr_to_BOARD13: .word BOARD13
 ptr_to_BOARD14: .word BOARD14
 ptr_to_BOARD15: .word BOARD15
 ptr_to_BOARD16: .word BOARD16
-ptr_to_TIME:	.word TIME
-ptr_to_CONNECTIONS: .word CONNECTIONS
+ptr_to_TIME_HEADER:	.word TIME_HEADER
+ptr_to_CONN_HEADER: .word CONN_HEADER
 ptr_to_PAUSE:	.word PAUSE
 ptr_to_RESTART_NEW: .word RESTART_NEW
 ptr_to_RESTART_CUR:	.word RESTART_CUR
 ptr_to_RESUME:	.word RESUME
+
 ; Main Routine
 lab6:
 	STMFD SP!,{r0-r12,lr}
@@ -104,13 +112,37 @@ lab6:
 	BL interrupt_init
 	BL timer_init
 
-	; print time and connections headers
-	LDR r0, ptr_to_CONNECTIONS
+	; clear screen in case of leftover junk
+	LDR r0, ptr_to_CLEAR
 	BL output_string
-	LDR r0, ptr_to_TIME
+
+	; print headers
+	LDR r0, ptr_to_TIME_HEADER
 	BL output_string
+	LDR r0, ptr_to_LINE2
+	BL output_string
+	LDR r0, ptr_to_CONN_HEADER
+	BL output_string
+
+	; use random number generator to pick board
+	; a%b = a - (b*(a/b))
+ 	MOV r5,#16
+	MOV r4, #0x0050
+	MOVT r4, #0x4003
+    LDR r4, [r4]
+    UDIV r6,r4,r5
+    MUL r6,r5,r6
+    SUB r5,r4,r6	; r5 = board number
+
+	; initialize current board
+	;LDR r4, ptr_to_board
+	;CMP r5, #0
+	;IT EQ
+	;LDREQ r6, ptr_to_board0
+	;STREQ r4, [r6]
+
 	; print game board
-	LDR r0, ptr_to_CUR		; initialize cursor
+	LDR r0, ptr_to_LINE3	; start of board location
 	BL output_string
 	LDR r0, ptr_to_X_LINE	; top X line
 	BL output_string
@@ -119,16 +151,11 @@ lab6:
 	LDR r0, ptr_to_X_LINE	; bottom X line
 	BL output_string
 
-	; testing Count_Spaces
-	LDR r0, ptr_to_BOARD1
-	BL Count_Spaces
-	MOV r0, #0
+	LDR r0, ptr_to_CUR		; move cursor to board center
+	BL output_string
+
 
 loop:
-	;LDR r0, ptr_to_LINE2
-	;BL output_string
-	;LDR r0, ptr_to_TIME
-	;BL output_string
 	mov r0, #1
 	CMP r0, #0
 	BNE loop
@@ -197,16 +224,28 @@ Timer_Handler:
  	LDR r5, [r4, #0x024] ; GPTMICR offset
  	ORR r5, r5, #0x1 ; set bit0 to 1 (TATOCINT)
  	STR r5, [r4, #0x024]
-	; increase time in header
-	LDR r1, ptr_to_TIME 	; load time integer
-	ADD r1, r1, #6
-	BL str2int
-	ADD r0, r0, #1				; increment time
-	MOV r4, r0
+	; increase time
+	LDR r5, ptr_to_time
+	LDR r4, [r5]
+	ADD r4, r4, #1
+	MOV r0, r4
+	STR r4, [r5]
+	; update time in header
 	BL num_digits
 	MOV r2, r0
 	MOV r0, r4
-	BL int2str					; store time integer
+	LDR r1, ptr_to_TIME_HEADER
+	ADD r1, r1, #6
+	BL int2str
+	; reprint time header
+	LDR r0, ptr_to_CUR_SAV		; save cursor
+	BL output_string
+	LDR r0, ptr_to_LINE1		; move to time header line
+	BL output_string
+	LDR r0, ptr_to_TIME_HEADER	; print time header
+	BL output_string
+	LDR r0, ptr_to_CUR_RES		; restore cursor
+	BL output_string
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
