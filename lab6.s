@@ -104,6 +104,11 @@ lab6:
 	BL interrupt_init
 	BL timer_init
 
+	; check resume flag
+	; if restart current flag 1 then load current_board otherwise load new board
+	; also set resstart current flag to 0
+
+
 	; print time and connections headers
 	LDR r0, ptr_to_CONNECTIONS
 	BL output_string
