@@ -1,8 +1,8 @@
 	.data
-
 ; game data allocations
 board: .space 512	; 512 byte allocation for current game board
 time:		.int 0	; time playing level value
+conns:		.int 0	; number of connections made
 paused:		.int 0	; flag for paused game state
 board_num:	.int 0	; int corresponding to current board number
 ; ANSI Escape Sequence strings for cursor control and board printing
@@ -12,6 +12,8 @@ LINE3:		.string 27,"[3;0H",0
 CUR: 		.string 27,"[7;5H",0
 CUR_SAV: 	.string 27,"[s",0
 CUR_RES: 	.string 27,"[u",0
+CUR_HIDE:	.string 27, "[?25l",0
+CUR_SHOW:	.string 27, "[?25h",0
 CUR_U:		.string 27,"[1A",0
 CUR_D:		.string 27,"[1B",0
 CUR_R:		.string 27,"[1C",0
@@ -48,7 +50,6 @@ RESUME:			.string "(SW1) Resume Current Board",0xA,0xD,0
 
 
 	.text
-
 ; library subroutines
 	.global UART0_Handler
 	.global Switch_Handler
@@ -64,8 +65,15 @@ RESUME:			.string "(SW1) Resume Current Board",0xA,0xD,0
 	.global int2str
 	.global str2int
 	.global num_digits
+; extra subroutines
+	.global strcpy
+	.global rng
+	.global choose_board
+	.global print_game_screen
+	.global count_spaces
 ; game data pointers
 ptr_to_board: 	.word board
+ptr_to_conns:	.word conns
 ptr_to_time: 	.word time
 ptr_to_paused:	.word paused
 ptr_to_board_num:	.word board_num
@@ -76,6 +84,8 @@ ptr_to_LINE3:	.word LINE3
 ptr_to_CUR: 	.word CUR
 ptr_to_CUR_SAV: .word CUR_SAV
 ptr_to_CUR_RES: .word CUR_RES
+ptr_to_CUR_HIDE:	.word CUR_HIDE
+ptr_to_CUR_SHOW:	.word CUR_SHOW
 ptr_to_CUR_U: 	.word CUR_U
 ptr_to_CUR_D: 	.word CUR_D
 ptr_to_CUR_R: 	.word CUR_R
@@ -99,7 +109,7 @@ ptr_to_BOARD14: .word BOARD14
 ptr_to_BOARD15: .word BOARD15
 ptr_to_BOARD16: .word BOARD16
 ptr_to_TIME_HEADER:	.word TIME_HEADER
-ptr_to_CONN_HEADER: .word CONN_HEADER
+ptr_to_CONNS_HEADER: .word CONN_HEADER
 ptr_to_PAUSE:	.word PAUSE
 ptr_to_RESTART_NEW: .word RESTART_NEW
 ptr_to_RESTART_CUR:	.word RESTART_CUR
@@ -115,95 +125,9 @@ lab6:
 	BL interrupt_init
 	BL timer_init
 
-	; clear screen in case of leftover junk
-	LDR r0, ptr_to_CLEAR
-	BL output_string
-
-	; print headers
-	LDR r0, ptr_to_TIME_HEADER
-	BL output_string
-	LDR r0, ptr_to_LINE2
-	BL output_string
-	LDR r0, ptr_to_CONN_HEADER
-	BL output_string
-
-	; use random number generator to pick board
-	; a%b = a - (b*(a/b))
- 	MOV r5,#16
-	MOV r4, #0x0050
-	MOVT r4, #0x4003
-    LDR r4, [r4]
-    UDIV r6,r4,r5
-    MUL r6,r5,r6
-    SUB r5,r4,r6			; r5 = board number
-	LDR r4, ptr_to_board_num
-	STR r5, [r4]			; store board number
-
-	; initialize current board
-	LDR r0, ptr_to_board
-	LDR r4, [r4]
-	CMP r4, #0
-	IT EQ
-	LDREQ r1, ptr_to_BOARD1
-	CMP r4, #1				; load board into r1 based on board_num
-	IT EQ
-	LDREQ r1, ptr_to_BOARD2
-	CMP r4, #2
-	IT EQ
-	LDREQ r1, ptr_to_BOARD3
-	CMP r4, #3
-	IT EQ
-	LDREQ r1, ptr_to_BOARD4
-	CMP r4, #4
-	IT EQ
-	LDREQ r1, ptr_to_BOARD5
-	CMP r4, #5
-	IT EQ
-	LDREQ r1, ptr_to_BOARD6
-	CMP r4, #6
-	IT EQ
-	LDREQ r1, ptr_to_BOARD7
-	CMP r4, #7
-	IT EQ
-	LDREQ r1, ptr_to_BOARD8
-	CMP r4, #8
-	IT EQ
-	LDREQ r1, ptr_to_BOARD9
-	CMP r4, #9
-	IT EQ
-	LDREQ r1, ptr_to_BOARD10
-	CMP r4, #10
-	IT EQ
-	LDREQ r1, ptr_to_BOARD11
-	CMP r4, #11
-	IT EQ
-	LDREQ r1, ptr_to_BOARD12
-	CMP r4, #12
-	IT EQ
-	LDREQ r1, ptr_to_BOARD13
-	CMP r4, #13
-	IT EQ
-	LDREQ r1, ptr_to_BOARD14
-	CMP r4, #14
-	IT EQ
-	LDREQ r1, ptr_to_BOARD15
-	CMP r4, #15
-	IT EQ
-	LDREQ r1, ptr_to_BOARD16
-	BL strcpy		; copy starter board into current board
-
-	; print game board
-	LDR r0, ptr_to_LINE3	; start of board location
-	BL output_string
-	LDR r0, ptr_to_X_LINE	; top X line
-	BL output_string
-	LDR r0, ptr_to_board	; board
-	BL output_string
-	LDR r0, ptr_to_X_LINE	; bottom X line
-	BL output_string
-	LDR r0, ptr_to_CUR		; move cursor to board center
-	BL output_string
-
+	; print game screen
+	MOV r0, #1		; set r0 = 1 to print random new board
+	BL print_game_screen
 
 loop:
 	mov r0, #1
@@ -222,8 +146,29 @@ UART0_Handler:
 	ORR r5, r5, #0x10 ; set bit 4 (RXIM)
 	STR r5, [r4, #0x44]
 
-	; load uart data (char input)
+	; load uart data (char input) in r6
 	LDR r6, [r4]
+
+	; if game is paused check input for '1' and '2'
+	LDR r4, ptr_to_paused	; load paused flag
+	LDR r5, [r4]
+	CMP r5, #1
+	BNE UH_UNPAUSED
+	CMP r6, #0x31			; check if char is ASCII '1'
+	IT EQ
+	MOVEQ r0, #1			; set r0 = 1 for random board
+	CMP r6, #0x32			; check if char is ASCII '2'
+	IT EQ
+	MOVEQ r0, #0			; set r0 = 0 for same board
+	BL print_game_screen			; print reset board
+	MOV r5, #0
+	STR r5, [r4]			; set pause flag to unpaused
+	LDR r7, ptr_to_time
+	LDR r8, ptr_to_conns
+	STR r5, [r7]			; set time to 0
+	STR r5, [r8]			; set connections to 0
+
+UH_UNPAUSED:
 	; check for cursor movement with wasd
 	CMP r6, #0x77 			; check if char is ASCII 'w'
 	IT EQ					; if so, move cursor up
@@ -268,27 +213,11 @@ Switch_Handler:
 	LDR r0, ptr_to_RESUME
 	BL output_string
 SW_UNPAUSE:
-	CMP r5, #1				; if game was resumed, exit
+	CMP r5, #1					; if game was resumed, exit
 	BNE SW_EXIT
 	; reprint game screen
-	LDR r0, ptr_to_CLEAR		; clear screen
-	BL output_string
-	LDR r0, ptr_to_TIME_HEADER	; print headers
-	BL output_string
-	LDR r0, ptr_to_LINE2
-	BL output_string
-	LDR r0, ptr_to_CONN_HEADER
-	BL output_string
-	LDR r0, ptr_to_LINE3		; print game board
-	BL output_string
-	LDR r0, ptr_to_X_LINE
-	BL output_string
-	LDR r0, ptr_to_board
-	BL output_string
-	LDR r0, ptr_to_X_LINE
-	BL output_string
-	LDR r0, ptr_to_CUR		; move cursor to board center
-	BL output_string
+	MOV r0, #2
+	BL print_game_screen
 SW_EXIT:
 	EOR r5, #1					; swap flag between 0 and 1
 	STR r5, [r4]
@@ -303,11 +232,13 @@ Timer_Handler:
  	LDR r5, [r4, #0x024] ; GPTMICR offset
  	ORR r5, r5, #0x1 ; set bit0 to 1 (TATOCINT)
  	STR r5, [r4, #0x024]
+
  	; check if game is paused
  	LDR r6, ptr_to_paused
  	LDR r6, [r6]
  	CMP r6, #0		; exit handler if game is paused
  	BNE TH_EXIT
+
 	; increase time
 	LDR r5, ptr_to_time
 	LDR r4, [r5]
@@ -321,23 +252,18 @@ Timer_Handler:
 	LDR r1, ptr_to_TIME_HEADER
 	ADD r1, r1, #6
 	BL int2str
-	; reprint time header
-	LDR r0, ptr_to_CUR_SAV		; save cursor
-	BL output_string
-	LDR r0, ptr_to_LINE1		; move to time header line
-	BL output_string
-	LDR r0, ptr_to_TIME_HEADER	; print time header
-	BL output_string
-	LDR r0, ptr_to_CUR_RES		; restore cursor
-	BL output_string
+	; reprint game screen
+	MOV r0, #2
+	BL print_game_screen
+
 TH_EXIT:
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
-; routine to count remaining spaces in a game board
+; count remaining spaces in a game board
 ; input: string (r0)
 ; output: number of space characters in string (r0)
-Count_Spaces:
+count_spaces:
 	STMFD sp!,{lr, r4-r11}
 	MOV r5, #0
 CS_LOOP:
@@ -353,16 +279,166 @@ CS_EXIT:
  	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
 
-; copy string (base address r1) to new destination (base address r0)
+; copy string
+; input: string (base address r1)
+; output: destination string (base address r0)
 strcpy:
 	STMFD sp!,{lr, r4-r11}
 SC_LOOP:
 	LDRB r4, [r1], #1	; load char from string
-	CMP r4, #0x0			; exit if char = NULL
+	CMP r4, #0x0		; exit if char = NULL
 	BEQ SC_EXIT
 	STRB r4, [r0], #1	; copy char to destination
 	B SC_LOOP
 SC_EXIT:
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
+
+; generate a random number between 0 and 15 and assign it to board number
+; input: time from timer
+; output: board number
+rng:
+	STMFD sp!,{lr, r4-r11}
+	; a%b = a - (b*(a/b))
+ 	MOV r5,#16		; b = 16
+	MOV r4, #0x0050
+	MOVT r4, #0x4003
+    LDR r4, [r4]	; time = a
+    UDIV r6,r4,r5
+    MUL r6,r5,r6
+    SUB r5,r4,r6	; r5 = board number
+    LDR r4, ptr_to_board_num
+	STR r5, [r4]	; store board number
+	LDMFD sp!, {lr, r4-r11}
+	mov pc, lr
+
+; choose board based on board number
+; input: board number
+; output: ptr to corresponding board in r1
+choose_board:
+	STMFD sp!,{lr, r4-r11}
+	LDR r4, ptr_to_board_num
+	LDR r4, [r4]			; load board_num
+	CMP r4, #0				; load board into r1 based on board_num
+	IT EQ
+	LDREQ r1, ptr_to_BOARD1
+	CMP r4, #1
+	IT EQ
+	LDREQ r1, ptr_to_BOARD2
+	CMP r4, #2
+	IT EQ
+	LDREQ r1, ptr_to_BOARD3
+	CMP r4, #3
+	IT EQ
+	LDREQ r1, ptr_to_BOARD4
+	CMP r4, #4
+	IT EQ
+	LDREQ r1, ptr_to_BOARD5
+	CMP r4, #5
+	IT EQ
+	LDREQ r1, ptr_to_BOARD6
+	CMP r4, #6
+	IT EQ
+	LDREQ r1, ptr_to_BOARD7
+	CMP r4, #7
+	IT EQ
+	LDREQ r1, ptr_to_BOARD8
+	CMP r4, #8
+	IT EQ
+	LDREQ r1, ptr_to_BOARD9
+	CMP r4, #9
+	IT EQ
+	LDREQ r1, ptr_to_BOARD10
+	CMP r4, #10
+	IT EQ
+	LDREQ r1, ptr_to_BOARD11
+	CMP r4, #11
+	IT EQ
+	LDREQ r1, ptr_to_BOARD12
+	CMP r4, #12
+	IT EQ
+	LDREQ r1, ptr_to_BOARD13
+	CMP r4, #13
+	IT EQ
+	LDREQ r1, ptr_to_BOARD14
+	CMP r4, #14
+	IT EQ
+	LDREQ r1, ptr_to_BOARD15
+	CMP r4, #15
+	IT EQ
+	LDREQ r1, ptr_to_BOARD16
+	LDMFD sp!, {lr, r4-r11}
+	mov pc, lr
+
+; print game board and headers
+; input: int in r0, 2 for current board, 1 for new random board, 0 for new current board
+; output: game board and headers printed in PuTTy terminal
+print_game_screen:
+	STMFD sp!,{lr, r4-r11}
+	MOV r4, r0				; move print option int to r4
+	LDR r0, ptr_to_CLEAR	; clear screen
+	BL output_string
+	LDR r0, ptr_to_LINE1	; move cursor to beginning of line 1
+	BL output_string
+	LDR r0, ptr_to_CUR_HIDE	; hide cursor while printing
+	BL output_string
+	; check if headers need to be reset
+	CMP r4, #2
+	BEQ PGS_PRINT_HEADERS	; if r0 = 0/1, skip header resets
+	LDR r5, ptr_to_time		; reset time header
+	LDR r6, [r5]
+	MOV r6, #0
+	STR r6, [r5]			; store 0 in time
+	MOV r0, r6
+	BL num_digits
+	MOV r2, r0				; r2 = num_digits time
+	MOV r0, r6				; r0 = time
+	LDR r1, ptr_to_TIME_HEADER
+	ADD r1, r1, #6			; move ptr to number in string
+	BL int2str				; update time header string
+	LDR r5, ptr_to_conns	; reset connections header
+	LDR r6, [r5]
+	MOV r6, #0
+	STR r6, [r5]			; store 0 in conns
+	ADD r6, r6, #0x30		; convert 0 to ASCII '0'
+	LDR r1, ptr_to_CONNS_HEADER
+	ADD r1, r1, #11			; move to number char in connections header
+	STRB r6, [r1]			; store '0' to reset connections header
+PGS_PRINT_HEADERS:
+	; print headers
+	LDR r0, ptr_to_TIME_HEADER
+	BL output_string
+	LDR r0, ptr_to_LINE2
+	BL output_string
+	LDR r0, ptr_to_CONNS_HEADER
+	BL output_string
+	; if r1 = 1, use random number generator to pick new board
+	CMP r4, #1
+	IT EQ
+	BLEQ rng				; updates board_num
+	; check if new board needs to be initialized
+	CMP r4, #2
+	BEQ PGS_PRINT_BOARD
+	; initialize board
+	BL choose_board			; choose starting board based on board_num
+	LDR r0, ptr_to_board
+	BL strcpy				; copy starting board (r1) into current board (r0)
+PGS_PRINT_BOARD:
+	; print game board
+	LDR r0, ptr_to_LINE3	; start of board location
+	BL output_string
+	LDR r0, ptr_to_X_LINE	; top X line
+	BL output_string
+	LDR r0, ptr_to_board	; board
+	BL output_string
+	LDR r0, ptr_to_X_LINE	; bottom X line
+	BL output_string
+	LDR r0, ptr_to_CUR		; move cursor to board center
+	BL output_string
+	;LDR r0, ptr_to_CUR_SHOW	; reveal cursor after printing
+	;BL output_string
+	LDMFD sp!, {lr, r4-r11}
+	mov pc, lr
+
+
 .end
