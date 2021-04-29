@@ -26,6 +26,7 @@ X_LINE:		.string 27,"[s",27,"[37mXXXXXXXXX",27,"[u",27,"[1B",0
 ; next line sequence 		27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",
 ; end of board sequence		27,"[37mX",27,"[u",27,"[1B",0
 ; colored circle sequence 	27,"[31mO",
+Board_simple_1:	.string "smrsssssswbsbsssgsssssscysgsssssycssswssssssmrsss"
 BOARD1: 	.string 27,"[s",27,"[37mX",27,"[32mO","    ",27,"[31mO",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[33mO",27,"[32mO"," ",27,"[33mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[31mO","    ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","      ",27,"[36mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[36mO","     ",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","       ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[37mO","  ",27,"[37mO",27,"[35mO","  ",27,"[37mX",27,"[u",27,"[1B",0
 BOARD2: 	.string 27,"[s",27,"[37mX",27,"[36mO",27,"[37mO","    ",27,"[37mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","      ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[36mO"," ",27,"[33mO","   ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","    ",27,"[34mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[32mO"," ",27,"[32mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[33mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[31mO",27,"[35mO"," ",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",0
 BOARD3:		.string 27,"[s",27,"[37mX",27,"[36mO"," ",27,"[32mO",27,"[33mO",27,"[37mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","     ",27,"[31mO",27,"[37mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[36mO","     ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","     ",27,"[34mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[33mO","   ",27,"[35mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[34mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[32mO","  ",27,"[35mO","  ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",0
@@ -118,7 +119,7 @@ ptr_to_PAUSE:	.word PAUSE
 ptr_to_RESTART_NEW: .word RESTART_NEW
 ptr_to_RESTART_CUR:	.word RESTART_CUR
 ptr_to_RESUME:	.word RESUME
-
+ptr_to_board_simple:	.word Board_simple_1
 
 ; main routine
 lab6:
@@ -134,6 +135,17 @@ lab6:
 	BL print_game_screen
 
 loop:
+	ldr r2,ptr_to_cur_x
+	ldr r3,ptr_to_cur_y
+	ldr r4,ptr_to_board_simple
+	ldr r5,[r2] ;x
+	ldr r6,[r3]	;y
+	mov r7,#7
+	MUL r6,r6,r7 ;
+	add r5,r5,r6 ;i
+	add r4,r4,r5
+	ldrb r7,[r4]  ; for testing
+
 	mov r0, #1
 	CMP r0, #0
 	BNE loop
