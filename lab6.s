@@ -5,6 +5,8 @@ time:		.int 0	; time playing level value
 conns:		.int 0	; number of connections made
 paused:		.int 0	; flag for paused game state
 board_num:	.int 0	; int corresponding to current board number
+cur_x:		.int 3	; int corresponding to cursor x position
+cur_y: 		.int 3	; int corresponding to cursor y position
 ; ANSI Escape Sequence strings for cursor control and board printing
 LINE1:		.string 27,"[1;0H",0
 LINE2:		.string 27,"[2;0H",0
@@ -77,6 +79,8 @@ ptr_to_conns:	.word conns
 ptr_to_time: 	.word time
 ptr_to_paused:	.word paused
 ptr_to_board_num:	.word board_num
+ptr_to_cur_x:	.word cur_x
+ptr_to_cur_y:	.word cur_y
 ; string pointers
 ptr_to_LINE1:	.word LINE1
 ptr_to_LINE2:	.word LINE2
@@ -152,7 +156,7 @@ UART0_Handler:
 	; if game is paused check input for '1' and '2'
 	LDR r4, ptr_to_paused	; load paused flag
 	LDR r5, [r4]
-	CMP r5, #1
+	CMP r5, #1				; skip '1' and '2' check if unpaused
 	BNE UH_UNPAUSED
 	CMP r6, #0x31			; check if char is ASCII '1'
 	IT EQ
@@ -160,7 +164,7 @@ UART0_Handler:
 	CMP r6, #0x32			; check if char is ASCII '2'
 	IT EQ
 	MOVEQ r0, #0			; set r0 = 0 for same board
-	BL print_game_screen			; print reset board
+	BL print_game_screen	; print reset board
 	MOV r5, #0
 	STR r5, [r4]			; set pause flag to unpaused
 	LDR r7, ptr_to_time
@@ -170,18 +174,45 @@ UART0_Handler:
 	B UH_EXIT
 UH_UNPAUSED:
 	; check for cursor movement with wasd
+	LDR r7, ptr_to_cur_x	; load cursor x/y positions
+	LDR r8, ptr_to_cur_y
+	LDR r9, [r7]			; r9 = x position
+	LDR r10, [r8]			; r10 = y position
+UH_U:
 	CMP r6, #0x77 			; check if char is ASCII 'w'
-	IT EQ					; if so, move cursor up
-	LDREQ r0, ptr_to_CUR_U
+	BNE UH_D
+	CMP r10, #6				; check if cursor is in bounds
+	BGE UH_D
+	ADD r10, r10, #1 		; if so, add 1 to y position
+	STR r10, [r8]
+	LDR r0, ptr_to_CUR_U	; and move cursor up
+	BL output_string
+UH_D:
 	CMP r6, #0x73 			; check if char is ASCII 's'
-	IT EQ					; if so, move cursor down
-	LDREQ r0, ptr_to_CUR_D
+	BNE UH_L
+	CMP r10, #0				; check if cursor is in bounds
+	BLE UH_L
+	SUB r10, r10, #1 		; if so, subtract 1 from y position
+	STR r10, [r8]
+	LDR r0, ptr_to_CUR_D	; and move cursor down
+	BL output_string
+UH_L:
 	CMP r6, #0x61 			; check if char is ASCII 'a'
-	IT EQ					; if so, move cursor left
-	LDREQ r0, ptr_to_CUR_L
+	BNE UH_R
+	CMP r9, #0				; check if cursor is in bounds
+	BLE UH_R
+	SUB r9, r9, #1 			; if so, subtract 1 from x position
+	STR r9, [r7]
+	LDR r0, ptr_to_CUR_L	; and move cursor left
+	BL output_string
+UH_R:
 	CMP r6, #0x64 			; check if char is ASCII 'd'
-	IT EQ					; if so, move cursor right
-	LDREQ r0, ptr_to_CUR_R
+	BNE UH_EXIT
+	CMP r9, #6				; check if cursor is in bounds
+	BGE UH_EXIT
+	ADD r9, r9, #1 		; if so, add 1 to x position
+	STR r9, [r7]
+	LDR r0, ptr_to_CUR_R
 	BL output_string
 UH_EXIT:
 	LDMFD sp!, {r0-r12,lr}
@@ -252,9 +283,13 @@ Timer_Handler:
 	ADD r1, r1, #6
 	BL int2str
 	; reprint time header
+	LDR r0, ptr_to_CUR_SAV
+	BL output_string
 	LDR r0, ptr_to_LINE1
 	BL output_string
 	LDR r0, ptr_to_TIME_HEADER
+	BL output_string
+	LDR r0, ptr_to_CUR_RES
 	BL output_string
 TH_EXIT:
 	LDMFD sp!, {r0-r12,lr}
@@ -433,10 +468,10 @@ PGS_PRINT_BOARD:
 	BL output_string
 	LDR r0, ptr_to_X_LINE	; bottom X line
 	BL output_string
-	;LDR r0, ptr_to_CUR		; move cursor to board center
-	;BL output_string
-	;LDR r0, ptr_to_CUR_SHOW	; reveal cursor after printing
-	;BL output_string
+	LDR r0, ptr_to_CUR		; move cursor to board center
+	BL output_string
+	LDR r0, ptr_to_CUR_SHOW; reveal cursor after printing
+	BL output_string
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
 
