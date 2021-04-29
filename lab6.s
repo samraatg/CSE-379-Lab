@@ -167,7 +167,7 @@ UART0_Handler:
 	LDR r8, ptr_to_conns
 	STR r5, [r7]			; set time to 0
 	STR r5, [r8]			; set connections to 0
-
+	B UH_EXIT
 UH_UNPAUSED:
 	; check for cursor movement with wasd
 	CMP r6, #0x77 			; check if char is ASCII 'w'
@@ -183,6 +183,7 @@ UH_UNPAUSED:
 	IT EQ					; if so, move cursor right
 	LDREQ r0, ptr_to_CUR_R
 	BL output_string
+UH_EXIT:
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
@@ -232,13 +233,11 @@ Timer_Handler:
  	LDR r5, [r4, #0x024] ; GPTMICR offset
  	ORR r5, r5, #0x1 ; set bit0 to 1 (TATOCINT)
  	STR r5, [r4, #0x024]
-
  	; check if game is paused
  	LDR r6, ptr_to_paused
  	LDR r6, [r6]
  	CMP r6, #0		; exit handler if game is paused
  	BNE TH_EXIT
-
 	; increase time
 	LDR r5, ptr_to_time
 	LDR r4, [r5]
@@ -252,10 +251,11 @@ Timer_Handler:
 	LDR r1, ptr_to_TIME_HEADER
 	ADD r1, r1, #6
 	BL int2str
-	; reprint game screen
-	MOV r0, #2
-	BL print_game_screen
-
+	; reprint time header
+	LDR r0, ptr_to_LINE1
+	BL output_string
+	LDR r0, ptr_to_TIME_HEADER
+	BL output_string
 TH_EXIT:
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
@@ -433,8 +433,8 @@ PGS_PRINT_BOARD:
 	BL output_string
 	LDR r0, ptr_to_X_LINE	; bottom X line
 	BL output_string
-	LDR r0, ptr_to_CUR		; move cursor to board center
-	BL output_string
+	;LDR r0, ptr_to_CUR		; move cursor to board center
+	;BL output_string
 	;LDR r0, ptr_to_CUR_SHOW	; reveal cursor after printing
 	;BL output_string
 	LDMFD sp!, {lr, r4-r11}
