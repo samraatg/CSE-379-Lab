@@ -252,7 +252,8 @@ UH_SPACE:
 	ITEE EQ
 	BLEQ show_pipe_color	; if so, illuminate LED
 	MOVNE r0, #0
-	BLNE show_pipe_color		; else turn off LED
+	BLNE show_pipe_color	; else turn off LED
+	MOV r0, #0				; set r0 to 0 so no string is printed later
 	B UH_EXIT
 UH_WASD:
 	; check for cursor movement with wasd
@@ -639,34 +640,36 @@ GCC_EXIT:
 show_pipe_color:
 	STMFD sp!, {lr, r4-r11}
 	LDR r4, ptr_to_color
-	LDR r4, [r4]	; r0 = color
+	LDR r4, [r4]	; r4 = color
+	LDR r5, ptr_to_drawing
+	LDR r5, [r5]	; r5 = drawing flag
 	; illuminate_RGB_LED encodings: 1=R, 2=B, 4=G, 3=M, 5=Y, 6=C, 7=W
 	; ANSI color encodings:			1=R, 2=G, 3=Y, 4=B, 5=M, 6=C, 7=W
-	CMP r0, #0
-	IT EQ
-	MOVEQ r5, r0	; LED = off
 	CMP r4, #1
 	IT EQ
-	MOVEQ r5, r4	; LED color = R
+	MOVEQ r6, r4	; LED color = R
 	CMP r4, #2
 	IT EQ
-	MOVEQ r5, #4	; LED color = G
+	MOVEQ r6, #4	; LED color = G
 	CMP r4, #3
 	IT EQ
-	MOVEQ r5, #5	; LED color = Y
+	MOVEQ r6, #5	; LED color = Y
 	CMP r4, #4
 	IT EQ
-	MOVEQ r5, #2	; LED color = B
+	MOVEQ r6, #2	; LED color = B
 	CMP r4, #5
 	IT EQ
-	MOVEQ r5, #3	; LED color = M
+	MOVEQ r6, #3	; LED color = M
 	CMP r4, #6
 	IT EQ
-	MOVEQ r5, r4	; LED color = C
+	MOVEQ r6, r4	; LED color = C
 	CMP r4, #7
 	IT EQ
-	MOVEQ r5, r4	; LED color = W
-	MOV r0, r5
+	MOVEQ r6, r4	; LED color = W
+	CMP r5, #0
+	IT EQ
+	MOVEQ r6, #0	; LED = off
+	MOV r0, r6
 	BL illuminate_RGB_LED
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
