@@ -4,13 +4,19 @@ board: .space 512	; 512 byte allocation for current game board
 time:		.int 0	; time playing level value
 conns:		.int 0	; number of connections made
 paused:		.int 0	; flag for paused game state
+drawing:	.int 0	; flag for drawing game state
 board_num:	.int 0	; int corresponding to current board number
 cur_x:		.int 3	; int corresponding to cursor x position
 cur_y: 		.int 3	; int corresponding to cursor y position
-; ANSI Escape Sequence strings for cursor control and board printing
+cur_char:	.string "      ",0	; string corresponding to character at cursor (6 char in length)
+cur_dir:	.int 0	; int corresponding to cursor change direction, 0 = vertical, 1 = horizontal, 2 = hor<->vert and vice versa
+; ANSI Escape Sequence strings for board printing
+CLEAR:		.string 27,"[2J",0
+X_LINE:		.string 27,"[s",27,"[37mXXXXXXXXX",27,"[u",27,"[1B",0
 LINE1:		.string 27,"[1;0H",0
 LINE2:		.string 27,"[2;0H",0
 LINE3:		.string 27,"[3;0H",0
+; ANSI Escape Sequence strings for cursor control
 CUR: 		.string 27,"[7;5H",0
 CUR_SAV: 	.string 27,"[s",0
 CUR_RES: 	.string 27,"[u",0
@@ -20,13 +26,33 @@ CUR_U:		.string 27,"[1A",0
 CUR_D:		.string 27,"[1B",0
 CUR_R:		.string 27,"[1C",0
 CUR_L:		.string 27,"[1D",0
-CLEAR:		.string 27,"[2J",0
-X_LINE:		.string 27,"[s",27,"[37mXXXXXXXXX",27,"[u",27,"[1B",0
+; ANSI Escape Sequence strings for pipe connections
+R_PIPE_VERT:	.string 27,"[31m|",0
+R_PIPE_HOR:		.string 27,"[31m-",0
+R_PIPE_CORN:	.string 27,"[31m+",0
+G_PIPE_VERT:	.string 27,"[32m|",0
+G_PIPE_HOR:		.string 27,"[32m-",0
+G_PIPE_CORN:	.string 27,"[32m+",0
+Y_PIPE_VERT:	.string 27,"[33m|",0
+Y_PIPE_HOR:		.string 27,"[33m-",0
+Y_PIPE_CORN:	.string 27,"[33m+",0
+B_PIPE_VERT:	.string 27,"[34m|",0
+B_PIPE_HOR:		.string 27,"[34m-",0
+B_PIPE_CORN:	.string 27,"[34m+",0
+M_PIPE_VERT:	.string 27,"[35m|",0
+M_PIPE_HOR:		.string 27,"[35m-",0
+M_PIPE_CORN:	.string 27,"[35m+",0
+C_PIPE_VERT:	.string 27,"[36m|",0
+C_PIPE_HOR:		.string 27,"[36m-",0
+C_PIPE_CORN:	.string 27,"[36m+",0
+W_PIPE_VERT:	.string 27,"[37m|",0
+W_PIPE_HOR:		.string 27,"[37m-",0
+W_PIPE_CORN:	.string 27,"[37m+",0
+; ANSI Escape Sequence strings for boards
 ; start of board sequence	.string 27,"[s",27,"[37mX",
 ; next line sequence 		27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",
 ; end of board sequence		27,"[37mX",27,"[u",27,"[1B",0
 ; colored circle sequence 	27,"[31mO",
-Board_simple_1:	.string "smrsssssswbsbsssgsssssscysgsssssycssswssssssmrsss"
 BOARD1: 	.string 27,"[s",27,"[37mX",27,"[32mO","    ",27,"[31mO",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[33mO",27,"[32mO"," ",27,"[33mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[31mO","    ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","      ",27,"[36mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[36mO","     ",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","       ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[37mO","  ",27,"[37mO",27,"[35mO","  ",27,"[37mX",27,"[u",27,"[1B",0
 BOARD2: 	.string 27,"[s",27,"[37mX",27,"[36mO",27,"[37mO","    ",27,"[37mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","      ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[36mO"," ",27,"[33mO","   ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","    ",27,"[34mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[32mO"," ",27,"[32mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[33mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[31mO",27,"[35mO"," ",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",0
 BOARD3:		.string 27,"[s",27,"[37mX",27,"[36mO"," ",27,"[32mO",27,"[33mO",27,"[37mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","     ",27,"[31mO",27,"[37mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[36mO","     ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","     ",27,"[34mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[33mO","   ",27,"[35mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[34mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[32mO","  ",27,"[35mO","  ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",0
@@ -74,19 +100,25 @@ RESUME:			.string "(SW1) Resume Current Board",0xA,0xD,0
 	.global choose_board
 	.global print_game_screen
 	.global count_spaces
+	.global get_cur_char
 ; game data pointers
 ptr_to_board: 	.word board
 ptr_to_conns:	.word conns
 ptr_to_time: 	.word time
 ptr_to_paused:	.word paused
+ptr_to_drawing:	.word drawing
 ptr_to_board_num:	.word board_num
 ptr_to_cur_x:	.word cur_x
 ptr_to_cur_y:	.word cur_y
+ptr_to_cur_dir:	.word cur_dir
+ptr_to_cur_char:	.word cur_char
 ; string pointers
+ptr_to_CLEAR: 	.word CLEAR				; line printing strings
 ptr_to_LINE1:	.word LINE1
 ptr_to_LINE2:	.word LINE2
 ptr_to_LINE3:	.word LINE3
-ptr_to_CUR: 	.word CUR
+ptr_to_X_LINE: 	.word X_LINE
+ptr_to_CUR: 	.word CUR				; cursor strings
 ptr_to_CUR_SAV: .word CUR_SAV
 ptr_to_CUR_RES: .word CUR_RES
 ptr_to_CUR_HIDE:	.word CUR_HIDE
@@ -95,9 +127,9 @@ ptr_to_CUR_U: 	.word CUR_U
 ptr_to_CUR_D: 	.word CUR_D
 ptr_to_CUR_R: 	.word CUR_R
 ptr_to_CUR_L: 	.word CUR_L
-ptr_to_X_LINE: 	.word X_LINE
-ptr_to_CLEAR: 	.word CLEAR
-ptr_to_BOARD1: 	.word BOARD1
+ptr_to_TIME_HEADER:		.word TIME_HEADER	; header strings
+ptr_to_CONNS_HEADER:	.word CONN_HEADER
+ptr_to_BOARD1: 	.word BOARD1			; starter board strings
 ptr_to_BOARD2: 	.word BOARD2
 ptr_to_BOARD3: 	.word BOARD3
 ptr_to_BOARD4: 	.word BOARD4
@@ -113,13 +145,32 @@ ptr_to_BOARD13: .word BOARD13
 ptr_to_BOARD14: .word BOARD14
 ptr_to_BOARD15: .word BOARD15
 ptr_to_BOARD16: .word BOARD16
-ptr_to_TIME_HEADER:	.word TIME_HEADER
-ptr_to_CONNS_HEADER: .word CONN_HEADER
-ptr_to_PAUSE:	.word PAUSE
+ptr_to_R_PIPE_VERT: .word R_PIPE_VERT	; board character strings
+ptr_to_R_PIPE_HOR: 	.word R_PIPE_HOR
+ptr_to_R_PIPE_CORN: .word R_PIPE_HOR
+ptr_to_G_PIPE_VERT: .word G_PIPE_VERT
+ptr_to_G_PIPE_HOR: 	.word G_PIPE_HOR
+ptr_to_G_PIPE_CORN: .word G_PIPE_HOR
+ptr_to_Y_PIPE_VERT: .word Y_PIPE_VERT
+ptr_to_Y_PIPE_HOR: 	.word Y_PIPE_HOR
+ptr_to_Y_PIPE_CORN: .word Y_PIPE_HOR
+ptr_to_B_PIPE_VERT: .word B_PIPE_VERT
+ptr_to_B_PIPE_HOR: 	.word B_PIPE_HOR
+ptr_to_B_PIPE_CORN: .word B_PIPE_HOR
+ptr_to_M_PIPE_VERT: .word M_PIPE_VERT
+ptr_to_M_PIPE_HOR: 	.word M_PIPE_HOR
+ptr_to_M_PIPE_CORN: .word M_PIPE_HOR
+ptr_to_C_PIPE_VERT: .word C_PIPE_VERT
+ptr_to_C_PIPE_HOR: 	.word C_PIPE_HOR
+ptr_to_C_PIPE_CORN: .word C_PIPE_HOR
+ptr_to_W_PIPE_VERT: .word W_PIPE_VERT
+ptr_to_W_PIPE_HOR: 	.word W_PIPE_HOR
+ptr_to_W_PIPE_CORN: .word W_PIPE_HOR
+ptr_to_PAUSE:	.word PAUSE				; pause menu prompt strings
 ptr_to_RESTART_NEW: .word RESTART_NEW
 ptr_to_RESTART_CUR:	.word RESTART_CUR
 ptr_to_RESUME:	.word RESUME
-ptr_to_board_simple:	.word Board_simple_1
+
 
 ; main routine
 lab6:
@@ -135,17 +186,6 @@ lab6:
 	BL print_game_screen
 
 loop:
-	ldr r2,ptr_to_cur_x
-	ldr r3,ptr_to_cur_y
-	ldr r4,ptr_to_board_simple
-	ldr r5,[r2] ;x
-	ldr r6,[r3]	;y
-	mov r7,#7
-	MUL r6,r6,r7 ;
-	add r5,r5,r6 ;i
-	add r4,r4,r5
-	ldrb r7,[r4]  ; for testing
-
 	mov r0, #1
 	CMP r0, #0
 	BNE loop
@@ -161,15 +201,17 @@ UART0_Handler:
 	LDR r5, [r4, #0x44] ; load UARTICR
 	ORR r5, r5, #0x10 ; set bit 4 (RXIM)
 	STR r5, [r4, #0x44]
-
+	; handler body
 	; load uart data (char input) in r6
 	LDR r6, [r4]
-
+	; set r0 to 0 in case no string is outputted
+	MOV r0, #0
 	; if game is paused check input for '1' and '2'
 	LDR r4, ptr_to_paused	; load paused flag
 	LDR r5, [r4]
 	CMP r5, #1				; skip '1' and '2' check if unpaused
-	BNE UH_UNPAUSED
+	BNE UH_SPACE
+UH_PAUSED:
 	CMP r6, #0x31			; check if char is ASCII '1'
 	IT EQ
 	MOVEQ r0, #1			; set r0 = 1 for random board
@@ -184,49 +226,67 @@ UART0_Handler:
 	STR r5, [r7]			; set time to 0
 	STR r5, [r8]			; set connections to 0
 	B UH_EXIT
-UH_UNPAUSED:
+UH_SPACE:
+	; check for space press behavior
+	CMP r6, #0x20
+	BNE UH_WASD
+	BL get_cur_char
+	;LDR r7, ptr_to_cur_char
+	;ADD r8, r7, #
+	;B UH_EXIT
+UH_WASD:
 	; check for cursor movement with wasd
 	LDR r7, ptr_to_cur_x	; load cursor x/y positions
 	LDR r8, ptr_to_cur_y
 	LDR r9, [r7]			; r9 = x position
 	LDR r10, [r8]			; r10 = y position
+	LDR r4, ptr_to_cur_dir	; load cursor direction
+	LDR r5, [r4]			; r5 = cur_dir
+	CMP r5, #3				; check for corner
+	IT EQ
+	MOVEQ r5, #0			; if so, clear cur_dir
 UH_U:
 	CMP r6, #0x77 			; check if char is ASCII 'w'
 	BNE UH_D
 	CMP r10, #6				; check if cursor is in bounds
-	BGE UH_D
-	ADD r10, r10, #1 		; if so, add 1 to y position
-	STR r10, [r8]
-	LDR r0, ptr_to_CUR_U	; and move cursor up
-	BL output_string
+	ITTTT LT
+	SUBLT r10, r10, #1 		; if so, subtract 1 from y position
+	STRLT r10, [r8]
+	LDRLT r0, ptr_to_CUR_U	; and move cursor up
+	ORRLT r5, #2			; set horizontal in cur_dir
 UH_D:
 	CMP r6, #0x73 			; check if char is ASCII 's'
 	BNE UH_L
 	CMP r10, #0				; check if cursor is in bounds
-	BLE UH_L
-	SUB r10, r10, #1 		; if so, subtract 1 from y position
-	STR r10, [r8]
-	LDR r0, ptr_to_CUR_D	; and move cursor down
-	BL output_string
+	ITTTT GT
+	ADDGT r10, r10, #1 		; if so, add 1 to y position
+	STRGT r10, [r8]
+	LDRGT r0, ptr_to_CUR_D	; and move cursor down
+	ORRGT r5, #2			; set horizontal in cur_dir
 UH_L:
 	CMP r6, #0x61 			; check if char is ASCII 'a'
 	BNE UH_R
 	CMP r9, #0				; check if cursor is in bounds
-	BLE UH_R
-	SUB r9, r9, #1 			; if so, subtract 1 from x position
-	STR r9, [r7]
-	LDR r0, ptr_to_CUR_L	; and move cursor left
-	BL output_string
+	ITTTT GT
+	SUBGT r9, r9, #1 		; if so, subtract 1 from x position
+	STRGT r9, [r7]
+	LDRGT r0, ptr_to_CUR_L	; and move cursor left
+	ORRGT r5, #1			; set vertical in cur_dir
 UH_R:
 	CMP r6, #0x64 			; check if char is ASCII 'd'
-	BNE UH_EXIT
+	BNE UH_SET_DIR
 	CMP r9, #6				; check if cursor is in bounds
-	BGE UH_EXIT
-	ADD r9, r9, #1 		; if so, add 1 to x position
-	STR r9, [r7]
-	LDR r0, ptr_to_CUR_R
-	BL output_string
+	ITTTT LT
+	ADDLT r9, r9, #1 		; if so, add 1 to x position
+	STRLT r9, [r7]
+	LDRLT r0, ptr_to_CUR_R	; and move cursor right
+	ORRLT r5, r5, #1		; set vertical in cur_dir
+UH_SET_DIR:
+	STR r5, [r4]			; store direction
 UH_EXIT:
+	CMP r0, #0				; if r0 was changed, print string
+	IT NE
+	BLNE output_string
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
@@ -465,12 +525,11 @@ PGS_PRINT_HEADERS:
 	BLEQ rng				; updates board_num
 	; check if new board needs to be initialized
 	CMP r4, #2
-	BEQ PGS_PRINT_BOARD
+	ITTT NE
 	; initialize board
-	BL choose_board			; choose starting board based on board_num
-	LDR r0, ptr_to_board
-	BL strcpy				; copy starting board (r1) into current board (r0)
-PGS_PRINT_BOARD:
+	BLNE choose_board			; choose starting board based on board_num
+	LDRNE r0, ptr_to_board
+	BLNE strcpy				; copy starting board (r1) into current board (r0)
 	; print game board
 	LDR r0, ptr_to_LINE3	; start of board location
 	BL output_string
@@ -487,5 +546,71 @@ PGS_PRINT_BOARD:
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
 
+; get the ANSI sequence of the character at the cursor
+; input: cur_x, cur_y, board
+; output: character's ANSI sequence in cur_character
+get_cur_char:
+	STMFD sp!,{lr, r4-r11}
+	LDR r4, ptr_to_board
+	LDR r5, ptr_to_cur_char
+	LDR r6, ptr_to_cur_x
+	LDR r6, [r6]
+	LDR r7, ptr_to_cur_y
+	LDR r7, [r7]
+	; use number of X's in string and mod to get to correct row
+	MOV r10, #1			; number of X's iterated through (starting at 1)
+	MOV r11, #2
+GCC_Y_LOOP:
+	CMP r7, #0
+	BLT GCC_X_LOOP		; after y = 0, branch to x loop to get to correct column
+	LDRB r8, [r4], #1
+	MOV r9, #1
+	CMP r8, #0x58 		; check if character is X
+	ITTTT EQ
+	ADDEQ r10, #1
+	UDIVEQ r9, r10, r11	; (number of X's) mod 2
+	MULEQ r9, r9, r11
+	SUBEQ r9, r10, r9
+	CMP r9, #0			; if remainder = 0, decrement y
+	IT EQ
+	SUBEQ r7, #1
+	B GCC_Y_LOOP
+GCC_X_LOOP:
+	CMP r6, #0
+	BLT GCC_STR_SEQ
+	LDRB r8, [r4], #1
+	CMP r8, #27		; check if character is ESC
+	IT EQ			; if so, decrement x
+	SUBEQ r6, #1
+	CMP r8, #0x20	; check if character is space
+	IT EQ			; if so, decrement x
+	SUBEQ r6, #1
+	B GCC_X_LOOP
+GCC_STR_SEQ:
+	SUB r4, #1		; move ptr back one character
+	; character at cursor should be in r4 now
+	LDRB r8, [r4]
+	CMP r8, #0x20	; check if character is space
+	ITTTT EQ
+	STRBEQ r8, [r5], #1	; if so, copy space to cur_char
+	MOVEQ r8, #0x0
+	STRBEQ r9, [r5], #1
+	BEQ GCC_EXIT
+	; else copy the 6 character ANSI sequence to cur_char
+	LDRB r8, [r4], #1
+	STRB r8, [r5], #1
+	LDRB r8, [r4], #1
+	STRB r8, [r5], #1
+	LDRB r8, [r4], #1
+	STRB r8, [r5], #1
+	LDRB r8, [r4], #1
+	STRB r8, [r5], #1
+	LDRB r8, [r4], #1
+	STRB r8, [r5], #1
+	LDRB r8, [r4], #1
+	STRB r8, [r5], #1
+GCC_EXIT:
+	LDMFD sp!, {lr, r4-r11}
+	mov pc, lr
 
 .end
