@@ -5,6 +5,7 @@ time:		.int 0	; time playing level value
 conns:		.int 0	; number of connections made
 paused:		.int 0	; flag for paused game state
 drawing:	.int 0	; flag for drawing game state
+color:		.int 0	; int corresponding to pipe color for drawing
 board_num:	.int 0	; int corresponding to current board number
 cur_x:		.int 3	; int corresponding to cursor x position
 cur_y: 		.int 3	; int corresponding to cursor y position
@@ -52,7 +53,6 @@ W_PIPE_CORN:	.string 27,"[37m+",0
 ; start of board sequence	.string 27,"[s",27,"[37mX",
 ; next line sequence 		27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",
 ; end of board sequence		27,"[37mX",27,"[u",27,"[1B",0
-; colored circle sequence 	27,"[31mO",
 BOARD1: 	.string 27,"[s",27,"[37mX",27,"[32mO","    ",27,"[31mO",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[33mO",27,"[32mO"," ",27,"[33mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[31mO","    ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","      ",27,"[36mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[36mO","     ",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","       ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[37mO","  ",27,"[37mO",27,"[35mO","  ",27,"[37mX",27,"[u",27,"[1B",0
 BOARD2: 	.string 27,"[s",27,"[37mX",27,"[36mO",27,"[37mO","    ",27,"[37mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","      ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[36mO"," ",27,"[33mO","   ",27,"[34mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","    ",27,"[34mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[32mO"," ",27,"[32mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[33mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[31mO",27,"[35mO"," ",27,"[35mO",27,"[37mX",27,"[u",27,"[1B",0
 BOARD3:		.string 27,"[s",27,"[37mX",27,"[36mO"," ",27,"[32mO",27,"[33mO",27,"[37mO","  ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","     ",27,"[31mO",27,"[37mO",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[36mO","     ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","     ",27,"[34mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX"," ",27,"[33mO","   ",27,"[35mO"," ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX","   ",27,"[34mO","   ",27,"[37mX",27,"[u",27,"[1B",27,"[s",27,"[37mX",27,"[32mO","  ",27,"[35mO","  ",27,"[31mO",27,"[37mX",27,"[u",27,"[1B",0
@@ -101,12 +101,14 @@ RESUME:			.string "(SW1) Resume Current Board",0xA,0xD,0
 	.global print_game_screen
 	.global count_spaces
 	.global get_cur_char
+	.global show_pipe_color
 ; game data pointers
 ptr_to_board: 	.word board
 ptr_to_conns:	.word conns
 ptr_to_time: 	.word time
 ptr_to_paused:	.word paused
 ptr_to_drawing:	.word drawing
+ptr_to_color:	.word color
 ptr_to_board_num:	.word board_num
 ptr_to_cur_x:	.word cur_x
 ptr_to_cur_y:	.word cur_y
@@ -187,7 +189,7 @@ lab6:
 
 loop:
 	mov r0, #1
-	CMP r0, #0
+	CMP r0, #-1
 	BNE loop
 
 	LDMFD sp!, {r0-r12,lr}
@@ -231,9 +233,27 @@ UH_SPACE:
 	CMP r6, #0x20
 	BNE UH_WASD
 	BL get_cur_char
-	;LDR r7, ptr_to_cur_char
-	;ADD r8, r7, #
-	;B UH_EXIT
+	LDR r7, ptr_to_cur_char
+	LDR r10, ptr_to_drawing
+	LDR r11, [r10]			; r10 = drawing flag
+	LDR r4, ptr_to_color
+	LDR r5, [r4]			; r5 = color
+	ADD r8, r7, #5
+	LDRB r8, [r8]			; r8 = ANSI sequence's actual character
+	ADD r9, r7, #3
+	LDRB r9, [r9]			; r9 = ANSI sequence's color
+	CMP r8, #0x4F			; check if char = 'O'
+	ITT EQ
+	EOREQ r11, #1			; if so, change drawing flag
+	SUBEQ r5, r9, #0x30		; and set r5 to pipe color
+	STR r5, [r4]			; update color and drawing flag
+	STR r11, [r10]
+	CMP r11, #1				; check if in drawing mode
+	ITEE EQ
+	BLEQ show_pipe_color	; if so, illuminate LED
+	MOVNE r0, #0
+	BLNE show_pipe_color		; else turn off LED
+	B UH_EXIT
 UH_WASD:
 	; check for cursor movement with wasd
 	LDR r7, ptr_to_cur_x	; load cursor x/y positions
@@ -248,21 +268,21 @@ UH_WASD:
 UH_U:
 	CMP r6, #0x77 			; check if char is ASCII 'w'
 	BNE UH_D
-	CMP r10, #6				; check if cursor is in bounds
-	ITTTT LT
-	SUBLT r10, r10, #1 		; if so, subtract 1 from y position
-	STRLT r10, [r8]
-	LDRLT r0, ptr_to_CUR_U	; and move cursor up
-	ORRLT r5, #2			; set horizontal in cur_dir
+	CMP r10, #0				; check if cursor is in bounds
+	ITTTT GT
+	SUBGT r10, r10, #1 		; if so, subtract 1 from y position
+	STRGT r10, [r8]
+	LDRGT r0, ptr_to_CUR_U	; and move cursor up
+	ORRGT r5, #2			; set horizontal in cur_dir
 UH_D:
 	CMP r6, #0x73 			; check if char is ASCII 's'
 	BNE UH_L
-	CMP r10, #0				; check if cursor is in bounds
-	ITTTT GT
-	ADDGT r10, r10, #1 		; if so, add 1 to y position
-	STRGT r10, [r8]
-	LDRGT r0, ptr_to_CUR_D	; and move cursor down
-	ORRGT r5, #2			; set horizontal in cur_dir
+	CMP r10, #6				; check if cursor is in bounds
+	ITTTT LT
+	ADDLT r10, r10, #1 		; if so, add 1 to y position
+	STRLT r10, [r8]
+	LDRLT r0, ptr_to_CUR_D	; and move cursor down
+	ORRLT r5, #2			; set horizontal in cur_dir
 UH_L:
 	CMP r6, #0x61 			; check if char is ASCII 'a'
 	BNE UH_R
@@ -613,4 +633,41 @@ GCC_EXIT:
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
 
+; indicate current pipe color via illuminate_RGB_LED routine
+; input: color
+; output: RGB LED color corresponding to pipe color
+show_pipe_color:
+	STMFD sp!, {lr, r4-r11}
+	LDR r4, ptr_to_color
+	LDR r4, [r4]	; r0 = color
+	; illuminate_RGB_LED encodings: 1=R, 2=B, 4=G, 3=M, 5=Y, 6=C, 7=W
+	; ANSI color encodings:			1=R, 2=G, 3=Y, 4=B, 5=M, 6=C, 7=W
+	CMP r0, #0
+	IT EQ
+	MOVEQ r5, r0	; LED = off
+	CMP r4, #1
+	IT EQ
+	MOVEQ r5, r4	; LED color = R
+	CMP r4, #2
+	IT EQ
+	MOVEQ r5, #4	; LED color = G
+	CMP r4, #3
+	IT EQ
+	MOVEQ r5, #5	; LED color = Y
+	CMP r4, #4
+	IT EQ
+	MOVEQ r5, #2	; LED color = B
+	CMP r4, #5
+	IT EQ
+	MOVEQ r5, #3	; LED color = M
+	CMP r4, #6
+	IT EQ
+	MOVEQ r5, r4	; LED color = C
+	CMP r4, #7
+	IT EQ
+	MOVEQ r5, r4	; LED color = W
+	MOV r0, r5
+	BL illuminate_RGB_LED
+	LDMFD sp!, {lr, r4-r11}
+	mov pc, lr
 .end
