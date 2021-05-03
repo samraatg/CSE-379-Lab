@@ -19,6 +19,7 @@ LINE2:		.string 27,"[2;0H",0
 LINE3:		.string 27,"[3;0H",0
 ; ANSI Escape Sequence strings for cursor control
 CUR: 		.string 27,"[7;5H",0
+CUR_COPY: 	.string 27,"[0;0H",0
 CUR_SAV: 	.string 27,"[s",0
 CUR_RES: 	.string 27,"[u",0
 CUR_HIDE:	.string 27, "[?25l",0
@@ -106,6 +107,7 @@ RESUME:			.string "(SW1) Resume Current Board",0xA,0xD,0
 	.global insert_cur_char
 	.global show_pipe_color
 	.global erase_pipe
+	.global choose_pipe
 ; game data pointers
 ptr_to_board: 	.word board
 ptr_to_conns:	.word conns
@@ -125,6 +127,7 @@ ptr_to_LINE2:	.word LINE2
 ptr_to_LINE3:	.word LINE3
 ptr_to_X_LINE: 	.word X_LINE
 ptr_to_CUR: 	.word CUR				; cursor strings
+ptr_to_CUR_COPY: 	.word CUR_COPY
 ptr_to_CUR_SAV: .word CUR_SAV
 ptr_to_CUR_RES: .word CUR_RES
 ptr_to_CUR_HIDE:	.word CUR_HIDE
@@ -153,25 +156,25 @@ ptr_to_BOARD15: .word BOARD15
 ptr_to_BOARD16: .word BOARD16
 ptr_to_R_PIPE_VERT: .word R_PIPE_VERT	; board character strings
 ptr_to_R_PIPE_HOR: 	.word R_PIPE_HOR
-ptr_to_R_PIPE_CORN: .word R_PIPE_HOR
+ptr_to_R_PIPE_CORN: .word R_PIPE_CORN
 ptr_to_G_PIPE_VERT: .word G_PIPE_VERT
 ptr_to_G_PIPE_HOR: 	.word G_PIPE_HOR
-ptr_to_G_PIPE_CORN: .word G_PIPE_HOR
+ptr_to_G_PIPE_CORN: .word G_PIPE_CORN
 ptr_to_Y_PIPE_VERT: .word Y_PIPE_VERT
 ptr_to_Y_PIPE_HOR: 	.word Y_PIPE_HOR
-ptr_to_Y_PIPE_CORN: .word Y_PIPE_HOR
+ptr_to_Y_PIPE_CORN: .word Y_PIPE_CORN
 ptr_to_B_PIPE_VERT: .word B_PIPE_VERT
 ptr_to_B_PIPE_HOR: 	.word B_PIPE_HOR
-ptr_to_B_PIPE_CORN: .word B_PIPE_HOR
+ptr_to_B_PIPE_CORN: .word B_PIPE_CORN
 ptr_to_M_PIPE_VERT: .word M_PIPE_VERT
 ptr_to_M_PIPE_HOR: 	.word M_PIPE_HOR
-ptr_to_M_PIPE_CORN: .word M_PIPE_HOR
+ptr_to_M_PIPE_CORN: .word M_PIPE_CORN
 ptr_to_C_PIPE_VERT: .word C_PIPE_VERT
 ptr_to_C_PIPE_HOR: 	.word C_PIPE_HOR
-ptr_to_C_PIPE_CORN: .word C_PIPE_HOR
+ptr_to_C_PIPE_CORN: .word C_PIPE_CORN
 ptr_to_W_PIPE_VERT: .word W_PIPE_VERT
 ptr_to_W_PIPE_HOR: 	.word W_PIPE_HOR
-ptr_to_W_PIPE_CORN: .word W_PIPE_HOR
+ptr_to_W_PIPE_CORN: .word W_PIPE_CORN
 ptr_to_SPACE:	.word SPACE
 ptr_to_PAUSE:	.word PAUSE				; pause menu prompt strings
 ptr_to_RESTART_NEW: .word RESTART_NEW
@@ -188,6 +191,9 @@ lab6:
 	BL interrupt_init
 	BL timer_init
 
+	; initialize cursor
+	LDR r0, ptr_to_CUR
+	BL output_string
 	; print game screen
 	MOV r0, #1		; set r0 = 1 to print random new board
 	BL print_game_screen
@@ -237,31 +243,40 @@ UH_SPACE:
 	; check for space press behavior
 	CMP r4, #0x20
 	BNE UH_WASD
+	LDR r5, ptr_to_drawing
+	LDR r6, [r5]			; r6 = drawing flag
+	LDR r7, ptr_to_color
+	LDR r8, [r7]			; r8 = color
+UH_SPACE_DRAW:
+	; check if already in drawing mode
+	CMP r7, #1
+	BNE UH_SPACE_NOT_DRAW
+	MOV r6, #0
+	STR r6, [r5]			; set drawing flag to 0
+	MOV r0, r8
+	BL erase_pipe			; erase color's pipe
+	MOV r8, #0
+	STR r8, [r7]			; set color to off
+	BL show_pipe_color		; turn off LED
+	BEQ UH_EXIT
+UH_SPACE_NOT_DRAW:
+	; else not in drawing mode behavior
 	BL get_cur_char
-	LDR r5, ptr_to_cur_char
-	LDR r6, ptr_to_drawing
-	LDR r7, [r6]			; r7 = drawing flag
-	LDR r8, ptr_to_color
-	LDR r9, [r8]			; r9 = color
-	CMP r7, #1				; check if already in drawing mode
-	IT EQ
-							; if so, delete color's pipe
-	ADD r10, r5, #5
-	LDRB r10, [r10]			; r10 = ANSI sequence's actual character
-	ADD r11, r5, #3
-	LDRB r11, [r11]			; r11 = ANSI sequence's color
-	CMP r10, #0x4F			; check if char = 'O'
-	ITE EQ
-	EOREQ r7, #1			; if so, change drawing flag
-	MOVNE r7, #0			; else drawing flag = 0
-	CMP r7, #1				; check if drawing flag = 1
-	ITE EQ
-	SUBEQ r11, r11, #0x30	; if so, color = circle color
-	MOVNE r11, #0			; else, color = 0 (off)
-	STR r9, [r8]			; store updated color and drawing flag
-	STR r7, [r6]
-	BL show_pipe_color		; illuminate RGB LED based on color
-	MOV r0, #0				; set r0 to 0 so no string is printed later
+	LDR r9, ptr_to_cur_char	; load cur_char ANSI sequence
+	ADD r10, r9, #5
+	LDRB r10, [r10]			; r10 = cur_char actual character
+	ADD r11, r9, #3
+	LDRB r11, [r11]
+	SUB r11, r11, #0x30		; r11 = cur_char color
+	CMP r10, #0x4F			; check if cur_char = 'O'
+	BNE UH_EXIT				; if not, exit
+	MOV r6, #1				; if so, set drawing flag to 1
+	STR r6, [r5]			; set drawing flag to 0
+	MOV r8, r11
+	STR r8, [r7]			; set color to 'O' color
+	MOV r0, r8
+	BL erase_pipe			; erase color's pipe
+	BL show_pipe_color		; illuminate LED to color
 	B UH_EXIT
 UH_WASD:
 	; check for cursor movement with wasd
@@ -278,34 +293,38 @@ UH_U:
 	CMP r4, #0x77 			; check if char is ASCII 'w'
 	BNE UH_D
 	CMP r10, #0				; check if cursor is in bounds
-	ITTT GT
+	ITTTT GT
 	SUBGT r10, r10, #1 		; if so, subtract 1 from y position
 	LDRGT r0, ptr_to_CUR_U	; and move cursor up
+	BLGT output_string
 	ORRGT r6, #2			; set horizontal in cur_dir
 UH_D:
 	CMP r4, #0x73 			; check if char is ASCII 's'
 	BNE UH_L
 	CMP r10, #6				; check if cursor is in bounds
-	ITTT LT
+	ITTTT LT
 	ADDLT r10, r10, #1 		; if so, add 1 to y position
 	LDRLT r0, ptr_to_CUR_D	; and move cursor down
+	BLLT output_string
 	ORRLT r6, #2			; set horizontal in cur_dir
 UH_L:
 	CMP r4, #0x61 			; check if char is ASCII 'a'
 	BNE UH_R
 	CMP r9, #0				; check if cursor is in bounds
-	ITTT GT
+	ITTTT GT
 	SUBGT r9, r9, #1 		; if so, subtract 1 from x position
 	LDRGT r0, ptr_to_CUR_L	; and move cursor left
+	BLGT output_string
 	ORRGT r6, #1			; set vertical in cur_dir
 UH_R:
 	CMP r4, #0x64 			; check if char is ASCII 'd'
 	BNE UH_WASD_DRAW_CHECK
 	CMP r9, #6				; check if cursor is in bounds
-	ITTT LT
+	ITTTT LT
 	ADDLT r9, r9, #1 		; if so, add 1 to x position
 	LDRLT r0, ptr_to_CUR_R	; and move cursor right
-	ORRLT r6, #1		; set vertical in cur_dir
+	BLLT output_string
+	ORRLT r6, #1			; set vertical in cur_dir
 UH_WASD_DRAW_CHECK:
 	STR r6, [r5]			; store updated cur_dir, cur_x, and cur_y
 	STR r9, [r7]
@@ -318,16 +337,16 @@ UH_WASD_DRAW_CHECK:
 	BL get_cur_char
 	LDR r7, ptr_to_cur_char
 	ADD r8, r7, #5
-	LDR r8, [r8]	; r8 = character
-	ADD r9, r7, #3
-	LDR r9, [r9]	; r9 = character color
-	;CMP r8, #0x4F	; check if char = 'O'
-	;IT EQ
-
+	LDRB r8, [r8]		; r8 = character
+	ADD r0, r7, #3
+	LDRB r0, [r0]		; r9 = character color
+	SUB r0, r0, #0x30
+	CMP r0, #0			; check if cur_char has a color
+	ITEE NE
+	BLNE erase_pipe		; if not, erase pipe
+	BLEQ choose_pipe	; else change cur_char to pipe segment
+	BLEQ insert_cur_char; and insert that pipe segment
 UH_EXIT:
-	CMP r0, #0				; if r0 was changed, print string
-	IT NE
-	BLNE output_string
 	LDMFD sp!, {r0-r12,lr}
 	BX lr
 
@@ -582,7 +601,7 @@ PGS_PRINT_HEADERS:
 	BL output_string
 	LDR r0, ptr_to_CUR		; move cursor to board center
 	BL output_string
-	LDR r0, ptr_to_CUR_SHOW; reveal cursor after printing
+	LDR r0, ptr_to_CUR_SHOW ; reveal cursor after printing
 	BL output_string
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
@@ -603,7 +622,7 @@ GCCA_Y_LOOP:
 	MOV r9, #1
 	CMP r10, #0x58 		; check if character is X
 	ITTTT EQ
-	ADDEQ r7, #1
+	ADDEQ r7, #1		; if so, increase X count
 	UDIVEQ r9, r7, r8	; (number of X's) mod 2
 	MULEQ r9, r9, r8
 	SUBEQ r9, r7, r9
@@ -656,10 +675,12 @@ get_cur_char:
 ; output: character at cursor in board
 insert_cur_char:
 	STMFD sp!,{lr, r4-r11}
-	LDR r0, ptr_to_cur_x
+	LDR r0, ptr_to_cur_x	; use cur_x and cur_y to get char addr
 	LDR r0, [r0]
+	MOV r7, r0
 	LDR r1, ptr_to_cur_y
 	LDR r1, [r1]
+	MOV r8, r1
 	LDR r4, ptr_to_cur_char
 	BL get_cur_char_addr	; get address pointing to char seq
 	LDRB r5, [r4], #1		; insert cur_char's 6 chars
@@ -674,6 +695,22 @@ insert_cur_char:
 	STRB r5, [r0], #1
 	LDRB r5, [r4], #1
 	STRB r5, [r0], #1
+	MOV r0, #2				; reprint board
+	BL print_game_screen
+	LDR r6, ptr_to_CUR_COPY	; use cur_x and cur_y to get cursor back to position
+	ADD r6, r6, #2
+	LDRB r9, [r6]
+	ADD r9, r9, r7
+	ADD r9, r9, #2
+	STRB r9, [r6]
+	MOV r9, #0
+	ADD r9, r9, r8
+	ADD r9, r9, #4
+	ADD r6, r6, #2
+	LDRB r9, [r6]
+	STRB r9, [r6]
+	LDR r0, ptr_to_CUR_COPY
+	BL output_string
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
 
@@ -733,13 +770,18 @@ erase_pipe:
 EP_LOOP:
 	BL get_cur_char
 	LDR r11, ptr_to_cur_char
-	ADD r11, r11, #3
-	LDR r11, [r11]
+	ADD r3, r11, #5		; r3 = char
+	ADD r11, r11, #3	; r11 = char color
+	LDRB r11, [r11]
 	SUB r11, r11, #0x30
+	LDRB r3, [r3]
+	CMP r3, #0x4F		; check if char is 'O'
+	IT EQ				; if so, ignore color and character
+	MOVEQ r11, #0
 	CMP r11, r4			; r4 = cur_char color
 	ITTTT EQ			; if same color, replace with space sequence
-	LDREQ r0, ptr_to_SPACE
-	LDREQ r1, ptr_to_cur_char
+	LDREQ r1, ptr_to_SPACE
+	LDREQ r0, ptr_to_cur_char
 	BLEQ strcpy
 	BLEQ insert_cur_char
 	ADD r9, r9, #1
@@ -747,7 +789,7 @@ EP_LOOP:
 	ITT	GT
 	ADDGT r10, #1
 	MOVGT r9, #0
-	CMP r9, #6			; check if y > 6
+	CMP r10, #6			; check if y > 6
 	ITEEE GT
 	BGT EP_EXIT
 	STRLE r9, [r5]		; store incremented cursor postion
@@ -759,14 +801,30 @@ EP_EXIT:
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
 
-; drawing mode
-do_drawing:
+; use color and cur_dir to select correct pipe segment
+; input: color, cur_dir
+; output: pipe segment in cur_char
+choose_pipe:
 	STMFD sp!, {lr, r4-r11}
-	LDR r4, ptr_to_cur_char
-	LDR r5, [r4]		; r5 = cur_char
-	LDR r6, ptr_to_color
-	LDR r6, [r6]		; r6 = color
-	LDR r
+	LDR r4, ptr_to_color
+	LDR r4, [r4]		; r4 = color
+	MOV r5, #7
+	MULT r4, r4, r5		; use color to get to pipe's pointer
+	ADD r4, r4, r5
+	LDR r5, ptr_to_cur_dir
+	LDR r5, [r5]		; r5 = direction
+	LDR r6, ptr_to_R_PIPE_VERT
+	ADD r6, r6, r4		; r6 = color's vertical pipe pointer
+	CMP r5, #2			; if dir = hor, skip to horizontal pointer
+	IT EQ
+	ADDEQ r6, r6, #7
+	CMP r5, #3			; if dir = corn, skip to corner pointer
+	IT EQ
+	ADDEQ r6, r6, #14
+	; r6 should now point to correct pipe's corner
+	MOV r1, r6			; copy pipe segment to cur_char
+	LDR r0, ptr_to_cur_char
+	BL strcpy
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
 
