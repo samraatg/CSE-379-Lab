@@ -17,6 +17,7 @@ X_LINE:		.string 27,"[s",27,"[37mXXXXXXXXX",27,"[u",27,"[1B",0
 LINE1:		.string 27,"[1;0H",0
 LINE2:		.string 27,"[2;0H",0
 LINE3:		.string 27,"[3;0H",0
+LINE12:		.string 27,"[12;0H",0
 ; ANSI Escape Sequence strings for cursor control
 CUR: 		.string 27,"[7;5H",0
 CUR_COPY: 	.string 27,"[0;0H",0
@@ -78,7 +79,7 @@ PAUSE:			.string "Game Paused",0xA,0xD,0
 RESTART_NEW:	.string "(1) Restart New Board",0xA,0xD,0
 RESTART_CUR:	.string "(2) Restart Current Board",0xA,0xD,0
 RESUME:			.string "(SW1) Resume Current Board",0xA,0xD,0
-
+FINISHED:		.string "Level Completed",0xA,0xD,0
 
 	.text
 ; library subroutines
@@ -125,6 +126,7 @@ ptr_to_CLEAR: 	.word CLEAR				; line printing strings
 ptr_to_LINE1:	.word LINE1
 ptr_to_LINE2:	.word LINE2
 ptr_to_LINE3:	.word LINE3
+ptr_to_LINE12:	.word LINE12
 ptr_to_X_LINE: 	.word X_LINE
 ptr_to_CUR: 	.word CUR				; cursor strings
 ptr_to_CUR_COPY: 	.word CUR_COPY
@@ -180,6 +182,7 @@ ptr_to_PAUSE:	.word PAUSE				; pause menu prompt strings
 ptr_to_RESTART_NEW: .word RESTART_NEW
 ptr_to_RESTART_CUR:	.word RESTART_CUR
 ptr_to_RESUME:	.word RESUME
+ptr_to_FINISHED:	.word FINISHED
 
 
 ; main routine
@@ -199,10 +202,15 @@ lab6:
 	BL print_game_screen
 
 loop:
-	mov r0, #1
-	CMP r0, #-1
+	LDR r0, ptr_to_board
+	BL count_spaces
+	CMP r0, #0
 	BNE loop
-
+exit:
+	LDR r0, ptr_to_LINE12
+	BL output_string
+	LDR r0, ptr_to_FINISHED
+	BL output_string
 	LDMFD sp!, {r0-r12,lr}
  	MOV pc, lr
 
@@ -696,21 +704,27 @@ insert_cur_char:
 	LDRB r5, [r4], #1
 	STRB r5, [r0], #1
 	MOV r0, #2				; reprint board
-	BL print_game_screen
-	LDR r6, ptr_to_CUR_COPY	; use cur_x and cur_y to get cursor back to position
-	ADD r6, r6, #2
-	LDRB r9, [r6]
-	ADD r9, r9, r7
-	ADD r9, r9, #2
-	STRB r9, [r6]
-	MOV r9, #0
-	ADD r9, r9, r8
-	ADD r9, r9, #4
-	ADD r6, r6, #2
-	LDRB r9, [r6]
-	STRB r9, [r6]
-	LDR r0, ptr_to_CUR_COPY
-	BL output_string
+	;BL print_game_screen
+	;LDR r6, ptr_to_CUR_COPY	; use cur_x and cur_y to get cursor back to position
+	;ADD r6, r6, #2
+	;LDRB r9, [r6]
+	;ADD r9, r9, r8
+	;ADD r9, r9, #4
+	;CMP r9, #0x39
+	;IT GT
+	;SUBGT r9, r9, #10
+	;STRB r9, [r6]
+	;MOV r9, #0
+	;ADD r6, r6, #2
+	;LDRB r9, [r6]
+	;ADD r9, r9, r7
+	;ADD r9, r9, #2
+	;CMP r9, #0x39
+	;IT GT
+	;SUBGT r9, r9, #10
+	;STRB r9, [r6]
+	;LDR r0, ptr_to_CUR_COPY
+	;BL output_string
 	LDMFD sp!, {lr, r4-r11}
 	mov pc, lr
 
